@@ -27,6 +27,12 @@ namespace GFMSG.GUI
             tsddbLanguage.Visible = false;
         }
 
+        public ExplorerForm(MultilingualCollection collection) : this()
+        {
+            LoadMessage(collection);
+            DisableOpen();
+        }
+
         private void Form1_Load(object sender, EventArgs e)
         {
         }
@@ -44,8 +50,6 @@ namespace GFMSG.GUI
             }
             cmbMultilingual.SelectedIndex = 0;
             cmbMultilingual.Visible = true;
-
-            DisableOpen();
         }
 
         private void DisableOpen()
@@ -268,25 +272,32 @@ namespace GFMSG.GUI
 
                 foreach (var (langcode, wrapper) in multimsg.Wrappers)
                 {
-                    if (wrapper.Entries[iEntry].HasText)
+                    try
                     {
-                        var fo = new StringOptions(StringFormat.Plain, langcode)
+                        if (wrapper.Entries[iEntry].HasText)
                         {
-                            RemoveLineBreaks = true,
-                        };
-                        for (var iTable = 0; iTable < wrapper.LanguageNumber; iTable++)
-                        {
-                            var symbols = wrapper.Entries[iEntry][iTable];
-                            var text = Formatter.Format(symbols, fo);
-                            var subitem = row.SubItems.Add(text);
-                            subitem.Tag = new CellInfo()
+                            var fo = new StringOptions(StringFormat.Plain, langcode)
                             {
-                                Entry = wrapper.Entries[iEntry],
-                                Row = iEntry,
-                                Index = iTable,
-                                LanguageCode = langcode,
+                                RemoveLineBreaks = true,
                             };
+                            for (var iTable = 0; iTable < wrapper.LanguageNumber; iTable++)
+                            {
+                                var symbols = wrapper.Entries[iEntry][iTable];
+                                var text = Formatter.Format(symbols, fo);
+                                var subitem = row.SubItems.Add(text);
+                                subitem.Tag = new CellInfo()
+                                {
+                                    Entry = wrapper.Entries[iEntry],
+                                    Row = iEntry,
+                                    Index = iTable,
+                                    LanguageCode = langcode,
+                                };
+                            }
                         }
+                    }
+                    catch
+                    {
+                        MessageBox.Show($"An error occurred on file \"{wrapper.Name}\"({langcode}).");
                     }
                 }
             }
@@ -721,6 +732,7 @@ namespace GFMSG.GUI
             foreach (var (langcode, foldername) in langmap)
             {
                 var langpath = Path.Combine(path, foldername) + "\\";
+                if(!Directory.Exists(langpath)) continue;
                 var files = Directory.GetFiles(langpath, "*.dat", SearchOption.AllDirectories);
                 if (files.Length == 0) continue;
                 var wrappers = files.Select(x => new MsgWrapper(x)

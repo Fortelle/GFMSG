@@ -59,21 +59,22 @@ formatter.AddConverter(new CharConverter(0xE301, 0xE329, StringFormat.Html | Str
 ## Samples
 ### Format variables
 | Format | Output |
-|  ----  | ----  |
+| ---- | ---- |
 | Raw | `{TAG_01_00:0x0000} sent out {TAG_01_02:0x0001}!` |
 | Markup | `{WORD:TRAINER_NAME:0x0000} sent out {WORD:POKE_NICKNAME:0x0001}!` |
 | Plain | `<TRAINER_NAME> sent out <POKE_NICKNAME>!` |
+| Html | `<var>TRAINER_NAME</var> sent out <var>POKE_NICKNAME</var>!` |
 
 ### Format tags
 | Format | Output |
-|  ----  | ----  |
+| ----  | ---- |
 | Raw | `Are you alive, my {TAG_11_00:0x00FF,0x0403}boygirl?!` |
 | Markup | `Are you alive, my {STRING_SELECT:BY_GENDER:255,boy,girl}?!` |
 | Plain | `Are you alive, my boy/girl?!` |
 
 ### Format characters
 | Format | Output |
-|  ----  | ----  |
+| ---- | ---- |
 | Raw | `[0xE301]   [0xE316][0xE309][0xE30C][0xE30C][0xE301][0xE307][0xE305]   [0xE307][0xE301][0xE314][0xE305][0xE317][0xE301][0xE319]` |
 | Markup | `\uE301   \uE316\uE309\uE30C\uE30C\uE301\uE307\uE305   \uE307\uE301\uE314\uE305\uE317\uE301\uE319` |
 | Plain | `A   VILLAGE   GATEWAY` |

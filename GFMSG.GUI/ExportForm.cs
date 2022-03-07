@@ -161,5 +161,15 @@
         {
             Change();
         }
+
+        private void chkIgnoreRuby_CheckedChanged(object sender, EventArgs e)
+        {
+            Change();
+        }
+
+        private void chkIgnoreSpeaker_CheckedChanged(object sender, EventArgs e)
+        {
+            Change();
+        }
     }
 }

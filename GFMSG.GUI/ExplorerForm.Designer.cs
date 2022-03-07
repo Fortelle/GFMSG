@@ -58,6 +58,7 @@
             this.tsslLanguageLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.tsslLanguage = new System.Windows.Forms.ToolStripStatusLabel();
             this.tsddbLanguage = new System.Windows.Forms.ToolStripDropDownButton();
+            this.tsddbFormat = new System.Windows.Forms.ToolStripDropDownButton();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tpFiles = new System.Windows.Forms.TabPage();
@@ -233,8 +234,8 @@
             this.devToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.testSaveToolStripMenuItem,
             this.testSaveAllToolStripMenuItem,
-            this.tsmiAnalyzeCharSymbols,
-            this.tsmiAnalyzeTagSymbols});
+            this.tsmiAnalyzeTagSymbols,
+            this.tsmiAnalyzeCharSymbols});
             this.devToolStripMenuItem.Name = "devToolStripMenuItem";
             this.devToolStripMenuItem.Size = new System.Drawing.Size(47, 24);
             this.devToolStripMenuItem.Text = "Dev";
@@ -274,7 +275,8 @@
             this.tsslEntryCount,
             this.tsslLanguageLabel,
             this.tsslLanguage,
-            this.tsddbLanguage});
+            this.tsddbLanguage,
+            this.tsddbFormat});
             this.statusStrip1.Location = new System.Drawing.Point(0, 703);
             this.statusStrip1.Name = "statusStrip1";
             this.statusStrip1.Size = new System.Drawing.Size(1008, 26);
@@ -313,6 +315,15 @@
             this.tsddbLanguage.Name = "tsddbLanguage";
             this.tsddbLanguage.Size = new System.Drawing.Size(208, 24);
             this.tsddbLanguage.Text = "toolStripDropDownButton1";
+            // 
+            // tsddbFormat
+            // 
+            this.tsddbFormat.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.tsddbFormat.Image = ((System.Drawing.Image)(resources.GetObject("tsddbFormat.Image")));
+            this.tsddbFormat.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.tsddbFormat.Name = "tsddbFormat";
+            this.tsddbFormat.Size = new System.Drawing.Size(208, 24);
+            this.tsddbFormat.Text = "toolStripDropDownButton1";
             // 
             // splitContainer1
             // 
@@ -589,5 +600,6 @@
         private ToolStripMenuItem tsmiBatchExport;
         private ToolStripSeparator toolStripSeparator3;
         private ToolStripSeparator toolStripSeparator4;
+        private ToolStripDropDownButton tsddbFormat;
     }
 }

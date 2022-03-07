@@ -141,11 +141,25 @@ namespace GFMSG.Pokemon
             {
                 ToText = (tag, args, options, buff) =>
                 {
-                    return options switch
+                    if (options.ConvertWordsetToPlaceholder)
                     {
-                        _ when tag.IndexName != null => $"<{tag.IndexName ?? "var"}>",
-                        _ => $"<var>",
-                    };
+                        var varname = options.LanguageCode.Split('-')[0].ToLower() switch
+                        {
+                            "ja" or "zh" => "〇〇〇〇〇",
+                            _ => "*****",
+                        };
+                        return varname;
+                    }
+                    else
+                    {
+                        var varname = tag.IndexName?.ToLower() ?? "var";
+                        return options switch
+                        {
+                            { Format: StringFormat.Plain } => $"<{varname}>",
+                            { Format: StringFormat.Html } => $"<var>{varname}</var>",
+                            _ => throw new NotSupportedException(),
+                        };
+                    }
                 },
             });
 
@@ -156,7 +170,26 @@ namespace GFMSG.Pokemon
                     var digit = tag.IndexValue;
                     var sepCode = args.Length >= 2 ? args[1] : 0;
                     var separator = sepCode > 0 ? $"{(char)sepCode}" : "";
-                    return $"<num{args[0] + 1}>";
+
+                    if (options.ConvertWordsetToPlaceholder)
+                    {
+                        var varname = new string('?', digit > 0 ? (int)digit : 1);
+                        if(separator .Length > 0)
+                        {
+                            varname = string.Join(separator, varname
+                                .Reverse()
+                                .Chunk(3)
+                                .Select(x => string.Join("", x.Reverse()))
+                                .Reverse()
+                                );
+                        }
+                        return varname;
+                    }
+                    else
+                    {
+                        var varname = $"num{args[0] + 1}";
+                        return $"<num{args[0] + 1}>";
+                    }
                 },
             });
 
@@ -235,7 +268,7 @@ namespace GFMSG.Pokemon
                     return options switch
                     {
                         { Format: StringFormat.Markup } => $@"{colorIndex}",
-                        { Format: StringFormat.Html } => $@"<font color=""{GeneralColorTable[colorIndex]}"">",
+                        { Format: StringFormat.Html } => $@"<font color=""{ColorTranslator.ToHtml(GeneralColorTable[colorIndex].Value)}"">",
                         { Format: StringFormat.Plain } => $@"",
                         _ => throw new NotSupportedException(),
                     };
@@ -270,7 +303,7 @@ namespace GFMSG.Pokemon
                     {
                         { Format: StringFormat.Markup } => $@"{colorIndex}",
                         { Format: StringFormat.Html } when colorIndex == 0 => $@"</font>",
-                        { Format: StringFormat.Html } when colorIndex > 0 => $@"<font color=""{SystemColorTable[colorIndex]}"">",
+                        { Format: StringFormat.Html } when colorIndex > 0 => $@"<font color=""{ColorTranslator.ToHtml(SystemColorTable[colorIndex].Value)}"">",
                         { Format: StringFormat.Plain } => $@"",
                         _ => throw new NotSupportedException(),
                     };
@@ -295,7 +328,8 @@ namespace GFMSG.Pokemon
                     return options switch
                     {
                         { Format: StringFormat.Markup } => $@"{rb},{rt}",
-                        { Format: StringFormat.Html } => $@"<ruby><rb>{rb}</rb><rp>(</rp><rt>{rt}</rt><rp>)</rp></ruby>",
+                        { Format: StringFormat.Html, IgnoreRuby: false } => $@"<ruby><rb>{rb}</rb><rp>(</rp><rt>{rt}</rt><rp>)</rp></ruby>",
+                        { Format: StringFormat.Html, IgnoreRuby: true } => rb,
                         { Format: StringFormat.Plain, IgnoreRuby: false } => $@"{rb}({rt})",
                         { Format: StringFormat.Plain, IgnoreRuby: true } => rb,
                         _ => throw new NotSupportedException(),

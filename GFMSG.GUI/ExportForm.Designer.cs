@@ -167,7 +167,7 @@
             "Raw",
             "Markup",
             "Plain",
-            "HTML"});
+            "Html"});
             this.cmbFormat.Location = new System.Drawing.Point(3, 35);
             this.cmbFormat.Name = "cmbFormat";
             this.cmbFormat.Size = new System.Drawing.Size(184, 28);
@@ -259,6 +259,7 @@
             this.chkIgnoreRuby.TabIndex = 10;
             this.chkIgnoreRuby.Text = "Ignore ruby";
             this.chkIgnoreRuby.UseVisualStyleBackColor = true;
+            this.chkIgnoreRuby.CheckedChanged += new System.EventHandler(this.chkIgnoreRuby_CheckedChanged);
             // 
             // chkIgnoreSpeaker
             // 
@@ -269,6 +270,7 @@
             this.chkIgnoreSpeaker.TabIndex = 11;
             this.chkIgnoreSpeaker.Text = "Ignore speaker";
             this.chkIgnoreSpeaker.UseVisualStyleBackColor = true;
+            this.chkIgnoreSpeaker.CheckedChanged += new System.EventHandler(this.chkIgnoreSpeaker_CheckedChanged);
             // 
             // ExportForm
             // 

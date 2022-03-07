@@ -25,6 +25,26 @@ namespace GFMSG.GUI
             tsslLanguageLabel.Visible = false;
             tsslLanguage.Visible = false;
             tsddbLanguage.Visible = false;
+
+            foreach(var format in Enum.GetValues<StringFormat>())
+            {
+                var tsmi = tsddbFormat.DropDownItems.Add(format.ToString());
+                tsmi.Tag = format;
+                tsmi.Click += (_, _) =>
+                {
+                    tsddbFormat.Text = string.Format("Format: {0}", format);
+                    tsddbFormat.Tag = tsmi.Tag;
+                    RefreshTable();
+                };
+                if (format == StringFormat.Plain) tsmi.PerformClick();
+            }
+            tsddbFormat.DropDownOpening += (_, _) =>
+            {
+                foreach(ToolStripMenuItem item in tsddbFormat.DropDownItems)
+                {
+                    item.Checked = item.Tag == tsddbFormat.Tag;
+                }
+            };
         }
 
         public ExplorerForm(MultilingualCollection collection) : this()
@@ -33,9 +53,6 @@ namespace GFMSG.GUI
             DisableOpen();
         }
 
-        private void Form1_Load(object sender, EventArgs e)
-        {
-        }
 
         public void LoadMessage(MultilingualCollection collection)
         {
@@ -158,6 +175,15 @@ namespace GFMSG.GUI
             splitContainer1.Panel1Collapsed = false;
         }
 
+        private StringOptions GetOptions()
+        {
+            return new StringOptions()
+            {
+                Format = (StringFormat)tsddbFormat.Tag,
+                RemoveLineBreaks = true,
+            };
+        }
+
         private void ShowWrapper(MsgWrapper msg)
         {
             if (msg.Load() == false) return;
@@ -176,11 +202,9 @@ namespace GFMSG.GUI
                 lstContent.Columns.Add($"table_{iTable}", $"Table {iTable + 1}", -2);
             }
 
-            var fo = new StringOptions()
+            var options = GetOptions() with
             {
-                Format = StringFormat.Plain,
                 LanguageCode = msg.LanguageCode,
-                RemoveLineBreaks = true,
             };
 
             for (var iEntry = 0; iEntry < msg.Entries.Count; iEntry++)
@@ -203,7 +227,7 @@ namespace GFMSG.GUI
                     if (msg[iEntry].HasText)
                     {
                         var symbols = msg[iEntry][iTable];
-                        var text = Formatter.Format(symbols, fo);
+                        var text = Formatter.Format(symbols, options);
                         var subitem = row.SubItems.Add(text);
                         subitem.Name = $"table_{iTable}";
                         subitem.Tag = iTable;
@@ -276,14 +300,14 @@ namespace GFMSG.GUI
                     {
                         if (wrapper.Entries[iEntry].HasText)
                         {
-                            var fo = new StringOptions(StringFormat.Plain, langcode)
+                            var options = GetOptions() with
                             {
-                                RemoveLineBreaks = true,
+                                LanguageCode = langcode,
                             };
                             for (var iTable = 0; iTable < wrapper.LanguageNumber; iTable++)
                             {
                                 var symbols = wrapper.Entries[iEntry][iTable];
-                                var text = Formatter.Format(symbols, fo);
+                                var text = Formatter.Format(symbols, options);
                                 var subitem = row.SubItems.Add(text);
                                 subitem.Tag = new CellInfo()
                                 {
@@ -314,19 +338,18 @@ namespace GFMSG.GUI
             tsslEntryCount.Text = string.Format("Entries: {0}", firstWrapper.Entries.Count);
         }
 
-        private void UpdateRow(ListViewItem row, bool changed)
+        private void RefreshTable()
         {
-            if (changed)
+            lstContent.BeginUpdate();
+            foreach (ListViewItem row in lstContent.Items)
             {
-                row.ForeColor = Color.Green;
-                row.Text = string.Format("{0} *", row.Index);
+                RefreshRow(row);
             }
-            else
-            {
-                row.ForeColor = SystemColors.WindowText;
-                row.Text = string.Format("{0}", row.Index);
-            }
+            lstContent.EndUpdate();
+        }
 
+        private void RefreshRow(ListViewItem row)
+        {
             foreach (ListViewItem.ListViewSubItem subitem in row.SubItems)
             {
                 switch (subitem.Name)
@@ -339,17 +362,115 @@ namespace GFMSG.GUI
                     default:
                         if (subitem.Tag is CellInfo cell)
                         {
-                            var fo = new StringOptions()
+                            var options = GetOptions() with
                             {
-                                Format = StringFormat.Plain,
                                 LanguageCode = cell.LanguageCode,
-                                RemoveLineBreaks = true,
                             };
-                            var text = Formatter.Format(cell.Sequence, fo);
+                            var text = Formatter.Format(cell.Sequence, options);
                             subitem.Text = text;
                         }
                         break;
                 }
+            }
+        }
+
+        private void RefreshRow(ListViewItem row, bool changed)
+        {
+            if (changed)
+            {
+                row.ForeColor = Color.Green;
+                row.Text = string.Format("{0} *", row.Index);
+            }
+            else
+            {
+                row.ForeColor = SystemColors.WindowText;
+                row.Text = string.Format("{0}", row.Index);
+            }
+
+            RefreshRow(row);
+        }
+
+        private void Search(Func<MsgWrapper.Entry, string?> action)
+        {
+            lstSearch.BeginUpdate();
+            lstSearch.Items.Clear();
+            string? searchLang = cmbMultilingual.SelectedIndex > 0 ? cmbMultilingual.Text : null;
+
+            foreach (var wrapper in CachedWrappers)
+            {
+                if (!string.IsNullOrEmpty(searchLang) && wrapper.LanguageCode != searchLang) continue;
+                wrapper.Load();
+                for (var iEntry = 0; iEntry < wrapper.Entries.Count; iEntry++)
+                {
+                    string? result = action(wrapper[iEntry]);
+                    if (result != null)
+                    {
+                        var row = lstSearch.Items.Add(result);
+                        row.SubItems.Add(wrapper.Name);
+                        row.Tag = (wrapper, iEntry);
+                    }
+                }
+            }
+            lstSearch.EndUpdate();
+            tabControl1.SelectedTab = tpSearch;
+        }
+
+        private bool CheckDiscard()
+        {
+            var changedWrappers = CachedWrappers.Where(mw => mw.Changed).ToArray();
+            if (changedWrappers.Length > 0)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("Do you want to discard your changes to the following files?");
+                sb.AppendLine();
+                foreach (var mw in changedWrappers)
+                {
+                    sb.AppendLine("  - " + mw.Name);
+                }
+                sb.AppendLine();
+
+                var result = MessageBox.Show(this, sb.ToString(), "File changed", MessageBoxButtons.YesNoCancel);
+                switch (result)
+                {
+                    case DialogResult.Yes:
+                        return true;
+                    case DialogResult.No:
+                        return true;
+                    case DialogResult.Cancel:
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        private void Save(MsgWrapper wrapper)
+        {
+            var changedIndex = wrapper == CurrentWrapper
+                ? Enumerable.Range(0, wrapper.Entries.Count).Where(i => wrapper.Entries[i].Changed).ToArray()
+                : null;
+
+            wrapper.Save(true);
+
+            if (changedIndex != null)
+            {
+                foreach (var i in changedIndex)
+                {
+                    RefreshRow(lstContent.Items[i], false);
+                }
+            }
+        }
+
+
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+        }
+
+        private void ExplorerForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (!CheckDiscard())
+            {
+                e.Cancel = true;
             }
         }
 
@@ -393,7 +514,7 @@ namespace GFMSG.GUI
 
                 if (result == DialogResult.Yes) // entry changed
                 {
-                    UpdateRow(hitTest.Item, true);
+                    RefreshRow(hitTest.Item, true);
                 }
             }
         }
@@ -406,31 +527,6 @@ namespace GFMSG.GUI
         private void listView1_SelectedIndexChanged(object sender, EventArgs e)
         {
 
-        }
-
-        private void Search(Func<MsgWrapper.Entry, string?> action)
-        {
-            lstSearch.BeginUpdate();
-            lstSearch.Items.Clear();
-            string? searchLang = cmbMultilingual.SelectedIndex > 0 ? cmbMultilingual.Text : null;
-
-            foreach (var wrapper in CachedWrappers)
-            {
-                if (!string.IsNullOrEmpty(searchLang) && wrapper.LanguageCode != searchLang) continue;
-                wrapper.Load();
-                for (var iEntry = 0; iEntry < wrapper.Entries.Count; iEntry++)
-                {
-                    string? result = action(wrapper[iEntry]);
-                    if (result != null)
-                    {
-                        var row = lstSearch.Items.Add(result);
-                        row.SubItems.Add(wrapper.Name);
-                        row.Tag = (wrapper, iEntry);
-                    }
-                }
-            }
-            lstSearch.EndUpdate();
-            tabControl1.SelectedTab = tpSearch;
         }
 
         private void btnSearch_Click(object sender, EventArgs e)
@@ -500,59 +596,6 @@ namespace GFMSG.GUI
                 }
                 lstContent.Items[index].Selected = true;
                 lstContent.EnsureVisible(index);
-            }
-        }
-
-        private bool CheckDiscard()
-        {
-            var changedWrappers = CachedWrappers.Where(mw => mw.Changed).ToArray();
-            if (changedWrappers.Length > 0)
-            {
-                var sb = new StringBuilder();
-                sb.AppendLine("Do you want to discard your changes to the following files?");
-                sb.AppendLine(); 
-                foreach (var mw in changedWrappers)
-                {
-                    sb.AppendLine("  - " + mw.Name);
-                }
-                sb.AppendLine();
-
-                var result = MessageBox.Show(this, sb.ToString(), "File changed", MessageBoxButtons.YesNoCancel);
-                switch (result)
-                {
-                    case DialogResult.Yes:
-                        return true;
-                    case DialogResult.No:
-                        return true;
-                    case DialogResult.Cancel:
-                        return false;
-                }
-            }
-            return true;
-        }
-
-        private void Save(MsgWrapper wrapper)
-        {
-            var changedIndex = wrapper == CurrentWrapper
-                ? Enumerable.Range(0, wrapper.Entries.Count).Where(i => wrapper.Entries[i].Changed).ToArray()
-                : null;
-
-            wrapper.Save(true);
-
-            if (changedIndex != null)
-            {
-                foreach (var i in changedIndex)
-                {
-                    UpdateRow(lstContent.Items[i], false);
-                }
-            }
-        }
-
-        private void ExplorerForm_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (!CheckDiscard())
-            {
-                e.Cancel = true;
             }
         }
 

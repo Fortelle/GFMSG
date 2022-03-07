@@ -14,6 +14,7 @@
         public NumberForm DefaultNumber { get; set; } = NumberForm.All;
         public bool IgnoreRuby { get; set; } = false;
         public bool IgnoreSpeaker { get; set; } = false;
+        public bool ConvertWordsetToPlaceholder { get; set; } = false;
 
         public StringOptions()
         {

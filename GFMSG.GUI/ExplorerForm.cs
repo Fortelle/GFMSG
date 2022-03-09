@@ -8,6 +8,7 @@ namespace GFMSG.GUI
         public MsgFormatter Formatter;
         public MsgWrapper CurrentWrapper;
         public string DirectoryPath { get; set; }
+        public StringOptions CurrentStringOptions { get; set; }
 
         public List<MsgWrapper> CachedWrappers;
         public MultilingualWrapper[] MultilingualWrappers;
@@ -32,19 +33,27 @@ namespace GFMSG.GUI
                 tsmi.Tag = format;
                 tsmi.Click += (_, _) =>
                 {
-                    tsddbFormat.Text = string.Format("Format: {0}", format);
-                    tsddbFormat.Tag = tsmi.Tag;
-                    RefreshTable();
+                    ChangeOptions(CurrentStringOptions with { Format = format });
                 };
+                tsddbFormat.DropDownItems.Insert(tsddbFormat.DropDownItems.Count - 3, tsmi);
                 if (format == StringFormat.Plain) tsmi.PerformClick();
             }
             tsddbFormat.DropDownOpening += (_, _) =>
             {
-                foreach(ToolStripMenuItem item in tsddbFormat.DropDownItems)
+                foreach(ToolStripItem item in tsddbFormat.DropDownItems)
                 {
-                    item.Checked = item.Tag == tsddbFormat.Tag;
+                    if(item is ToolStripMenuItem tsmi && tsmi.Tag != null)
+                    {
+                        tsmi.Checked = (StringFormat)tsmi.Tag == CurrentStringOptions.Format;
+                    }
                 }
             };
+
+            ChangeOptions(new StringOptions()
+            {
+                Format = StringFormat.Plain,
+                RemoveLineBreaks = true,
+            });
         }
 
         public ExplorerForm(MultilingualCollection collection) : this()
@@ -52,7 +61,6 @@ namespace GFMSG.GUI
             LoadMessage(collection);
             DisableOpen();
         }
-
 
         public void LoadMessage(MultilingualCollection collection)
         {
@@ -175,13 +183,11 @@ namespace GFMSG.GUI
             splitContainer1.Panel1Collapsed = false;
         }
 
-        private StringOptions GetOptions()
+        private void ChangeOptions(StringOptions options)
         {
-            return new StringOptions()
-            {
-                Format = (StringFormat)tsddbFormat.Tag,
-                RemoveLineBreaks = true,
-            };
+            CurrentStringOptions = options;
+            tsddbFormat.Text = string.Format("Format: {0}", options.Format);
+            RefreshTable();
         }
 
         private void ShowWrapper(MsgWrapper msg)
@@ -202,7 +208,7 @@ namespace GFMSG.GUI
                 lstContent.Columns.Add($"table_{iTable}", $"Table {iTable + 1}", -2);
             }
 
-            var options = GetOptions() with
+            var options = CurrentStringOptions with
             {
                 LanguageCode = msg.LanguageCode,
             };
@@ -300,7 +306,7 @@ namespace GFMSG.GUI
                     {
                         if (wrapper.Entries[iEntry].HasText)
                         {
-                            var options = GetOptions() with
+                            var options = CurrentStringOptions with
                             {
                                 LanguageCode = langcode,
                             };
@@ -362,7 +368,7 @@ namespace GFMSG.GUI
                     default:
                         if (subitem.Tag is CellInfo cell)
                         {
-                            var options = GetOptions() with
+                            var options = CurrentStringOptions with
                             {
                                 LanguageCode = cell.LanguageCode,
                             };
@@ -819,7 +825,7 @@ namespace GFMSG.GUI
 
         private void tsmiExport_Click(object sender, EventArgs e)
         {
-            using var frm = new ExportForm(CurrentWrapper, Formatter);
+            using var frm = new ExportForm(CurrentWrapper, Formatter, CurrentStringOptions);
             frm.ShowDialog(this);
         }
 
@@ -827,14 +833,21 @@ namespace GFMSG.GUI
         {
             if (MultilingualWrappers != null)
             {
-                using var frm = new ExportForm(MultilingualWrappers, Formatter);
+                using var frm = new ExportForm(MultilingualWrappers, Formatter, CurrentStringOptions);
                 frm.ShowDialog(this);
             }
             else
             {
-                using var frm = new ExportForm(CachedWrappers.ToArray(), Formatter);
+                using var frm = new ExportForm(CachedWrappers.ToArray(), Formatter, CurrentStringOptions);
                 frm.ShowDialog(this);
             }
+        }
+
+        private void tsmiStringOptions_Click(object sender, EventArgs e)
+        {
+            using var frm = new StringOptionsForm(CurrentStringOptions);
+            if (frm.ShowDialog(this) != DialogResult.OK) return;
+            ChangeOptions(frm.GetValue());
         }
     }
 }

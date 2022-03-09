@@ -4,62 +4,56 @@
     {
         public object Wrappers { get; set; }
         public MsgFormatter Formatter { get; set; }
+        public StringOptions Options { get; set; }
 
         public ExportForm()
         {
             InitializeComponent();
 
+            foreach (var format in Enum.GetValues<StringFormat>())
+            {
+                cmbFormat.Items.Add(format);
+            }
+
             cmbFileFormat.SelectedIndex = 0;
-            cmbFormat.SelectedIndex = 2;
         }
 
-        public ExportForm(MsgWrapper wrapper, MsgFormatter formatter) : this()
+        public ExportForm(MsgWrapper wrapper, MsgFormatter formatter, StringOptions options) : this()
         {
             Wrappers = wrapper;
             Formatter = formatter;
+            Options = options;
             chkMerge.Visible = false;
         }
 
-        public ExportForm(MsgWrapper[] wrappers, MsgFormatter formatter) : this()
+        public ExportForm(MsgWrapper[] wrappers, MsgFormatter formatter, StringOptions options) : this()
         {
             Wrappers = wrappers;
             Formatter = formatter;
+            Options = options;
             chkMerge.Visible = true;
         }
 
-        public ExportForm(MultilingualWrapper[] wrappers, MsgFormatter formatter) : this()
+        public ExportForm(MultilingualWrapper[] wrappers, MsgFormatter formatter, StringOptions options) : this()
         {
             Wrappers = wrappers;
             Formatter = formatter;
+            Options = options;
             chkMerge.Visible = false;
         }
 
-        private void ExportForm_Load(object sender, EventArgs e)
+        private ExportOptions GetOptions()
         {
-            Change();
-
-        }
-
-        public ExportOptions GetOptions()
-        {
-            Enum.TryParse(cmbFormat.Text, out StringFormat format);
-            var stringOptions = new StringOptions()
-            {
-                Format = format,
-                RemoveLineBreaks = chkRemoveLF.Checked,
-                IgnoreRuby = chkIgnoreRuby.Checked,
-                IgnoreSpeaker = chkIgnoreSpeaker.Checked,
-            };
             return new ExportOptions()
             {
-                StringOptions = stringOptions,
+                StringOptions = Options,
                 Extension = cmbFileFormat.Text,
                 Merged = chkMerge.Checked,
                 IncludeId = chkIncludeId.Checked,
             };
         }
 
-        public void Change()
+        private void Change()
         {
             var options = GetOptions();
             switch (Wrappers)
@@ -81,17 +75,13 @@
                     break;
             }
 
+            cmbFormat.SelectedItem = Options.Format;
+
             txtPreview.SelectionStart = txtPreview.TextLength;
             txtPreview.SelectionLength = 0;
 
             txtPreview.Select();
         }
-
-        public void Save()
-        {
-
-        }
-
 
         private void btnExport_Click(object sender, EventArgs e)
         {
@@ -137,7 +127,7 @@
             }
         }
 
-        private void cmbFormat_SelectedIndexChanged(object sender, EventArgs e)
+        private void ExportForm_Load(object sender, EventArgs e)
         {
             Change();
         }
@@ -147,27 +137,26 @@
             Change();
         }
 
-        private void cmbFileFormat_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            Change();
-        }
-
         private void chkMerge_CheckedChanged(object sender, EventArgs e)
         {
             Change();
         }
 
-        private void chkRemoveLF_CheckedChanged(object sender, EventArgs e)
+        private void btnStringOptions_Click(object sender, EventArgs e)
         {
+            using var frm = new StringOptionsForm(Options);
+            if (frm.ShowDialog(this) != DialogResult.OK) return;
+            Options = frm.GetValue();
             Change();
         }
 
-        private void chkIgnoreRuby_CheckedChanged(object sender, EventArgs e)
+        private void cmbFormat_SelectionChangeCommitted(object sender, EventArgs e)
         {
+            Options = Options with { Format = (StringFormat)cmbFormat.SelectedItem };
             Change();
         }
 
-        private void chkIgnoreSpeaker_CheckedChanged(object sender, EventArgs e)
+        private void cmbFileFormat_SelectionChangeCommitted(object sender, EventArgs e)
         {
             Change();
         }

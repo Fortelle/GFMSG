@@ -33,6 +33,7 @@
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.txtPreview = new System.Windows.Forms.TextBox();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.btnStringOptions = new System.Windows.Forms.Button();
             this.chkMerge = new System.Windows.Forms.CheckBox();
             this.label1 = new System.Windows.Forms.Label();
             this.btnExport = new System.Windows.Forms.Button();
@@ -40,11 +41,7 @@
             this.chkIncludeId = new System.Windows.Forms.CheckBox();
             this.cmbFileFormat = new System.Windows.Forms.ComboBox();
             this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
-            this.chkRemoveLF = new System.Windows.Forms.CheckBox();
-            this.chkIgnoreRuby = new System.Windows.Forms.CheckBox();
-            this.chkIgnoreSpeaker = new System.Windows.Forms.CheckBox();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
@@ -54,7 +51,6 @@
             this.splitContainer1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
-            this.tableLayoutPanel2.SuspendLayout();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -100,6 +96,7 @@
             // 
             this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel1.Controls.Add(this.btnStringOptions, 0, 3);
             this.tableLayoutPanel1.Controls.Add(this.chkMerge, 0, 7);
             this.tableLayoutPanel1.Controls.Add(this.label1, 0, 0);
             this.tableLayoutPanel1.Controls.Add(this.btnExport, 0, 8);
@@ -107,7 +104,6 @@
             this.tableLayoutPanel1.Controls.Add(this.chkIncludeId, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.cmbFileFormat, 0, 6);
             this.tableLayoutPanel1.Controls.Add(this.label2, 0, 5);
-            this.tableLayoutPanel1.Controls.Add(this.label3, 0, 3);
             this.tableLayoutPanel1.Controls.Add(this.tableLayoutPanel2, 0, 4);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
@@ -125,6 +121,17 @@
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(190, 529);
             this.tableLayoutPanel1.TabIndex = 6;
+            // 
+            // btnStringOptions
+            // 
+            this.btnStringOptions.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnStringOptions.Location = new System.Drawing.Point(112, 99);
+            this.btnStringOptions.Name = "btnStringOptions";
+            this.btnStringOptions.Size = new System.Drawing.Size(75, 26);
+            this.btnStringOptions.TabIndex = 12;
+            this.btnStringOptions.Text = "Options";
+            this.btnStringOptions.UseVisualStyleBackColor = true;
+            this.btnStringOptions.Click += new System.EventHandler(this.btnStringOptions_Click);
             // 
             // chkMerge
             // 
@@ -163,16 +170,11 @@
             this.cmbFormat.Dock = System.Windows.Forms.DockStyle.Top;
             this.cmbFormat.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbFormat.FormattingEnabled = true;
-            this.cmbFormat.Items.AddRange(new object[] {
-            "Raw",
-            "Markup",
-            "Plain",
-            "Html"});
             this.cmbFormat.Location = new System.Drawing.Point(3, 35);
             this.cmbFormat.Name = "cmbFormat";
             this.cmbFormat.Size = new System.Drawing.Size(184, 28);
             this.cmbFormat.TabIndex = 3;
-            this.cmbFormat.SelectedIndexChanged += new System.EventHandler(this.cmbFormat_SelectedIndexChanged);
+            this.cmbFormat.SelectionChangeCommitted += new System.EventHandler(this.cmbFormat_SelectionChangeCommitted);
             // 
             // chkIncludeId
             // 
@@ -198,7 +200,7 @@
             this.cmbFileFormat.Name = "cmbFileFormat";
             this.cmbFileFormat.Size = new System.Drawing.Size(184, 28);
             this.cmbFileFormat.TabIndex = 5;
-            this.cmbFileFormat.SelectedIndexChanged += new System.EventHandler(this.cmbFileFormat_SelectedIndexChanged);
+            this.cmbFileFormat.SelectionChangeCommitted += new System.EventHandler(this.cmbFileFormat_SelectionChangeCommitted);
             // 
             // label2
             // 
@@ -210,23 +212,10 @@
             this.label2.TabIndex = 7;
             this.label2.Text = "File format:";
             // 
-            // label3
-            // 
-            this.label3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(3, 108);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(107, 20);
-            this.label3.TabIndex = 10;
-            this.label3.Text = "String options:";
-            // 
             // tableLayoutPanel2
             // 
             this.tableLayoutPanel2.ColumnCount = 1;
             this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel2.Controls.Add(this.chkRemoveLF, 0, 0);
-            this.tableLayoutPanel2.Controls.Add(this.chkIgnoreRuby, 0, 1);
-            this.tableLayoutPanel2.Controls.Add(this.chkIgnoreSpeaker, 0, 2);
             this.tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel2.Location = new System.Drawing.Point(3, 131);
             this.tableLayoutPanel2.Name = "tableLayoutPanel2";
@@ -238,39 +227,6 @@
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel2.Size = new System.Drawing.Size(184, 267);
             this.tableLayoutPanel2.TabIndex = 11;
-            // 
-            // chkRemoveLF
-            // 
-            this.chkRemoveLF.AutoSize = true;
-            this.chkRemoveLF.Location = new System.Drawing.Point(3, 3);
-            this.chkRemoveLF.Name = "chkRemoveLF";
-            this.chkRemoveLF.Size = new System.Drawing.Size(159, 24);
-            this.chkRemoveLF.TabIndex = 9;
-            this.chkRemoveLF.Text = "Remove line breaks";
-            this.chkRemoveLF.UseVisualStyleBackColor = true;
-            this.chkRemoveLF.CheckedChanged += new System.EventHandler(this.chkRemoveLF_CheckedChanged);
-            // 
-            // chkIgnoreRuby
-            // 
-            this.chkIgnoreRuby.AutoSize = true;
-            this.chkIgnoreRuby.Location = new System.Drawing.Point(3, 35);
-            this.chkIgnoreRuby.Name = "chkIgnoreRuby";
-            this.chkIgnoreRuby.Size = new System.Drawing.Size(106, 24);
-            this.chkIgnoreRuby.TabIndex = 10;
-            this.chkIgnoreRuby.Text = "Ignore ruby";
-            this.chkIgnoreRuby.UseVisualStyleBackColor = true;
-            this.chkIgnoreRuby.CheckedChanged += new System.EventHandler(this.chkIgnoreRuby_CheckedChanged);
-            // 
-            // chkIgnoreSpeaker
-            // 
-            this.chkIgnoreSpeaker.AutoSize = true;
-            this.chkIgnoreSpeaker.Location = new System.Drawing.Point(3, 67);
-            this.chkIgnoreSpeaker.Name = "chkIgnoreSpeaker";
-            this.chkIgnoreSpeaker.Size = new System.Drawing.Size(128, 24);
-            this.chkIgnoreSpeaker.TabIndex = 11;
-            this.chkIgnoreSpeaker.Text = "Ignore speaker";
-            this.chkIgnoreSpeaker.UseVisualStyleBackColor = true;
-            this.chkIgnoreSpeaker.CheckedChanged += new System.EventHandler(this.chkIgnoreSpeaker_CheckedChanged);
             // 
             // ExportForm
             // 
@@ -291,8 +247,6 @@
             this.groupBox1.PerformLayout();
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            this.tableLayoutPanel2.ResumeLayout(false);
-            this.tableLayoutPanel2.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -313,10 +267,7 @@
         private CheckBox chkIncludeId;
         private Label label2;
         private CheckBox chkMerge;
-        private CheckBox chkRemoveLF;
-        private Label label3;
         private TableLayoutPanel tableLayoutPanel2;
-        private CheckBox chkIgnoreRuby;
-        private CheckBox chkIgnoreSpeaker;
+        private Button btnStringOptions;
     }
 }

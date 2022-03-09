@@ -63,8 +63,8 @@ namespace GFMSG.Pokemon
 
             AddConverter(new CharConverter(0xE301, 0xE329, StringFormat.Html | StringFormat.Plain)
             {
-                ToText = (code, options) => {
-                    return UnownCodes[code - 0xE301].ToString();
+                ToText = (handler) => {
+                    return UnownCodes[handler.Code - handler.CodeStart].ToString();
                 }
             });
         }

@@ -21,13 +21,18 @@ namespace GFMSG
             {
                 Debug.Assert(formatter == null);
                 formatter = value;
-                formatter.Tags.RequireText = (filename, index, options) => {
-                    if (string.IsNullOrEmpty(options.LanguageCode)) return null;
-                    if (!Wrappers.ContainsKey(options.LanguageCode)) return null;
-                    var wrapper = Wrappers[options.LanguageCode].FirstOrDefault(x => x.Name == filename);
+                formatter.RequireText = (args) => {
+                    if (args.EntryIndex == null && args.EntryName == null) return null;
+                    if (string.IsNullOrEmpty(args.StringOptions.LanguageCode)) return null;
+                    if (!Wrappers.ContainsKey(args.StringOptions.LanguageCode)) return null;
+                    var wrapper = Wrappers[args.StringOptions.LanguageCode].FirstOrDefault(x => x.Name == args.Filename);
                     if (wrapper == null) return null;
                     wrapper.Load();
-                    var text = formatter.Format(wrapper[index].Sequences[0], options);
+                    var entry = args.EntryIndex != null ? wrapper[args.EntryIndex.Value]
+                        : args.EntryName != null ? wrapper[args.EntryName]
+                        : null;
+                    if (entry == null) return null;
+                    var text = formatter.Format(entry.Sequences[args.LanguageIndex], args.StringOptions);
                     return text;
                 };
             }

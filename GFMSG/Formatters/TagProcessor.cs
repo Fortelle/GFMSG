@@ -13,8 +13,6 @@ namespace GFMSG
         public List<(byte Group, string Name)> GroupNames { get; set; } = new();
         public List<(byte Group, byte Index, string Name)> IndexNames { get; set; } = new();
 
-        public Func<string, int, StringOptions, string?> RequireText { get; set; }
-
         public TagProcessor()
         {
         }
@@ -28,7 +26,14 @@ namespace GFMSG
 
             foreach (var converter in converters)
             {
-                ret = converter.ToText(taginfo, ts.Parameters, options, buff);
+                var handler = new TagToTextHandler()
+                {
+                    Tag = taginfo,
+                    Parameters = ts.Parameters,
+                    Options = options,
+                    Queue = buff,
+                };
+                ret = converter.ToText(handler);
                 if (ret != null) break;
             }
 
@@ -91,12 +96,17 @@ namespace GFMSG
             var converter = GetConverters(taginfo, StringFormat.Markup).FirstOrDefault(x => x.ToSymbol != null);
             if (converter != null)
             {
-                var append = new List<ushort>();
-                var parameters = converter.ToSymbol!(taginfo, args, append);
+                var handler = new TagToSymbolHandler()
+                {
+                    Tag = taginfo,
+                    Arguments = args,
+                    Append = new List<ushort>(),
+                };
+                var parameters = converter.ToSymbol!(handler);
                 return new ISymbol[] {
                     new TagSymbol(taginfo.GroupValue.Value, taginfo.IndexValue.Value, parameters),
                 }
-                .Concat(append.Select(x=> new CharSymbol(x)))
+                .Concat(handler.Append.Select(x=> new CharSymbol(x)))
                 .ToArray();
             }
             else if(taginfo.GroupValue.HasValue && taginfo.IndexValue.HasValue)

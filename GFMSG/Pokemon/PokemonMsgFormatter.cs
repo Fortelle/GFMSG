@@ -111,11 +111,18 @@ namespace GFMSG.Pokemon
 
             AddConverter(new TagConverter("WORD", "TRAINER_NAME_FIELD", StringFormat.Plain | StringFormat.Html)
             {
-                ToText = (tag, args, options, buff) => {
-                    if (options.IgnoreSpeaker) return "";
+                ToText = (handler) => {
+                    if (handler.Options.IgnoreSpeaker) return "";
                     if (string.IsNullOrEmpty(TrainerNameFieldFilename)) return "";
-                    var trainer_id = args[0];
-                    var trname = Tags.RequireText(TrainerNameFieldFilename, trainer_id, options);
+                    var trainerId = handler.Parameters[0];
+                    var args = new RequireArguments()
+                    {
+                        Filename = TrainerNameFieldFilename,
+                        EntryIndex = trainerId,
+                        LanguageIndex = 0,
+                        StringOptions = handler.Options,
+                    };
+                    var trname = RequireText?.Invoke(args);
                     if (trname == null) return "";
                     return " (" + trname + ")";
                 },
@@ -123,27 +130,27 @@ namespace GFMSG.Pokemon
 
             AddConverter(new TagConverter("STREAM_CTRL", "PAGE_CLEAR", StringFormat.Plain | StringFormat.Html)
             {
-                ToText = (tag, args, options, buff) => {
-                    buff.Insert(CharSymbol.LineFeed);
+                ToText = (handler) => {
+                    handler.Queue.Insert(CharSymbol.LineFeed);
                     return "";
                 },
             });
 
             AddConverter(new TagConverter("STREAM_CTRL", "LINE_FEED", StringFormat.Plain | StringFormat.Html)
             {
-                ToText = (tag, args, options, buff) => {
-                    buff.Insert(CharSymbol.LineFeed);
+                ToText = (handler) => {
+                    handler.Queue.Insert(CharSymbol.LineFeed);
                     return "";
                 },
             });
 
             AddConverter(new TagConverter("WORD", StringFormat.Plain | StringFormat.Html)
             {
-                ToText = (tag, args, options, buff) =>
+                ToText = (handler) =>
                 {
-                    if (options.ConvertWordsetToPlaceholder)
+                    if (handler.Options.ConvertWordsetToPlaceholder)
                     {
-                        var varname = options.LanguageCode.Split('-')[0].ToLower() switch
+                        var varname = handler.Options.LanguageCode.Split('-')[0].ToLower() switch
                         {
                             "ja" or "zh" => "〇〇〇〇〇",
                             _ => "*****",
@@ -152,8 +159,8 @@ namespace GFMSG.Pokemon
                     }
                     else
                     {
-                        var varname = tag.IndexName?.ToLower() ?? "var";
-                        return options switch
+                        var varname = handler.Tag.IndexName?.ToLower() ?? "var";
+                        return handler.Options switch
                         {
                             { Format: StringFormat.Plain } => $"<{varname}>",
                             { Format: StringFormat.Html } => $"<var>{varname}</var>",
@@ -165,13 +172,13 @@ namespace GFMSG.Pokemon
 
             AddConverter(new TagConverter("NUMBER", StringFormat.Plain | StringFormat.Html)
             {
-                ToText = (tag, args, options, buff) =>
+                ToText = (handler) =>
                 {
-                    var digit = tag.IndexValue;
-                    var sepCode = args.Length >= 2 ? args[1] : 0;
+                    var digit = handler.Tag.IndexValue;
+                    var sepCode = handler.Parameters.Length >= 2 ? handler.Parameters[1] : 0;
                     var separator = sepCode > 0 ? $"{(char)sepCode}" : "";
 
-                    if (options.ConvertWordsetToPlaceholder)
+                    if (handler.Options.ConvertWordsetToPlaceholder)
                     {
                         var varname = new string('?', digit > 0 ? (int)digit : 1);
                         if(separator .Length > 0)
@@ -187,61 +194,66 @@ namespace GFMSG.Pokemon
                     }
                     else
                     {
-                        var varname = $"num{args[0] + 1}";
-                        return $"<num{args[0] + 1}>";
+                        var varname = $"num{handler.Parameters[0] + 1}";
+                        return handler.Options switch
+                        {
+                            { Format: StringFormat.Plain } => $"<{varname}>",
+                            { Format: StringFormat.Html } => $"<var>{varname}</var>",
+                            _ => throw new NotSupportedException(),
+                        };
                     }
                 },
             });
 
             AddConverter(new TagConverter("STRING_SELECT")
             {
-                ToText = (tag, args, options, buff) =>
+                ToText = (handler) =>
                 {
-                    var ref_word_id = args[0];
-                    var stringLength = (args.Length - 1) * 2;
+                    var ref_word_id = handler.Parameters[0];
+                    var stringLength = (handler.Parameters.Length - 1) * 2;
                     // Debug.Assert(stringLength <= 4);
                     var lengths = new byte[4];
-                    for (var j = 0; j < args.Length - 1; j++)
+                    for (var j = 0; j < handler.Parameters.Length - 1; j++)
                     {
-                        var param = args[j + 1];
+                        var param = handler.Parameters[j + 1];
                         lengths[j * 2] = (byte)(param & 0xff);
                         lengths[j * 2 + 1] = (byte)(param >> 8);
                     }
                     var texts = new List<string>();
                     for (var j = 0; j < stringLength; j++)
                     {
-                        var text = buff.Read(lengths[j]);
+                        var text = handler.Queue.Read(lengths[j]);
                         texts.Add(text);
                     }
-                    return options switch
+                    return handler.Options switch
                     {
                         { Format: StringFormat.Markup } => ref_word_id + "," + string.Join(",", texts),
 
-                        { DefaultGender: GenderForm.ForceMasculine } when tag.IndexName == "BY_GENDER" => texts[0],
-                        { DefaultGender: GenderForm.ForceFeminine } when tag.IndexName == "BY_GENDER" => texts[1],
+                        { Gender: GenderForm.ForceMasculine } when handler.Tag.IndexName == "BY_GENDER" => texts[0],
+                        { Gender: GenderForm.ForceFeminine } when handler.Tag.IndexName == "BY_GENDER" => texts[1],
 
-                        { DefaultNumber: NumberForm.ForceSingular } when tag.IndexName == "BY_QUANTITY" => texts[0],
-                        { DefaultNumber: NumberForm.ForcePlural } when tag.IndexName == "BY_QUANTITY" => texts[1],
+                        { Number: NumberForm.ForceSingular } when handler.Tag.IndexName == "BY_QUANTITY" => texts[0],
+                        { Number: NumberForm.ForcePlural } when handler.Tag.IndexName == "BY_QUANTITY" => texts[1],
 
-                        { DefaultGender: GenderForm.ForceMasculine, DefaultNumber: NumberForm.ForceSingular } when tag.IndexName == "BY_GENDER_QUANTITY" => texts[0],
-                        { DefaultGender: GenderForm.ForceFeminine, DefaultNumber: NumberForm.ForceSingular } when tag.IndexName == "BY_GENDER_QUANTITY" => texts[1],
-                        { DefaultGender: GenderForm.ForceMasculine, DefaultNumber: NumberForm.ForcePlural } when tag.IndexName == "BY_GENDER_QUANTITY" => texts[2],
-                        { DefaultGender: GenderForm.ForceFeminine, DefaultNumber: NumberForm.ForcePlural } when tag.IndexName == "BY_GENDER_QUANTITY" => texts[3],
+                        { Gender: GenderForm.ForceMasculine, Number: NumberForm.ForceSingular } when handler.Tag.IndexName == "BY_GENDER_QUANTITY" => texts[0],
+                        { Gender: GenderForm.ForceFeminine, Number: NumberForm.ForceSingular } when handler.Tag.IndexName == "BY_GENDER_QUANTITY" => texts[1],
+                        { Gender: GenderForm.ForceMasculine, Number: NumberForm.ForcePlural } when handler.Tag.IndexName == "BY_GENDER_QUANTITY" => texts[2],
+                        { Gender: GenderForm.ForceFeminine, Number: NumberForm.ForcePlural } when handler.Tag.IndexName == "BY_GENDER_QUANTITY" => texts[3],
 
-                        { DefaultGender: GenderForm.ForceMasculine, DefaultNumber: NumberForm.ForceSingular } when tag.IndexName == "BY_GENDER_QUANTITY_GERMAN" => texts[0],
-                        { DefaultGender: GenderForm.ForceFeminine, DefaultNumber: NumberForm.ForceSingular } when tag.IndexName == "BY_GENDER_QUANTITY_GERMAN" => texts[1],
-                        { DefaultGender: GenderForm.ForceNeuter, DefaultNumber: NumberForm.ForceSingular } when tag.IndexName == "BY_GENDER_QUANTITY_GERMAN" => texts[2],
-                        { DefaultNumber: NumberForm.ForcePlural } when tag.IndexName == "BY_GENDER_QUANTITY_GERMAN" => texts[3],
+                        { Gender: GenderForm.ForceMasculine, Number: NumberForm.ForceSingular } when handler.Tag.IndexName == "BY_GENDER_QUANTITY_GERMAN" => texts[0],
+                        { Gender: GenderForm.ForceFeminine, Number: NumberForm.ForceSingular } when handler.Tag.IndexName == "BY_GENDER_QUANTITY_GERMAN" => texts[1],
+                        { Gender: GenderForm.ForceNeuter, Number: NumberForm.ForceSingular } when handler.Tag.IndexName == "BY_GENDER_QUANTITY_GERMAN" => texts[2],
+                        { Number: NumberForm.ForcePlural } when handler.Tag.IndexName == "BY_GENDER_QUANTITY_GERMAN" => texts[3],
 
                         _ => texts.Count(x => x.Length > 0) == 1 ? $"({texts.First(x => x.Length > 0)})" : string.Join("/", texts),
                     };
                 },
 
-                ToSymbol = (tag, args, append) =>
+                ToSymbol = (handler) =>
                 {
                     var list = new List<ushort>();
-                    var ref_word_id = Convert.ToUInt16(args[0]);
-                    var texts = args[1..];
+                    var ref_word_id = Convert.ToUInt16(handler.Arguments[0]);
+                    var texts = handler.Arguments[1..];
 
                     list.Add(ref_word_id);
                     for (var i = 0; i < texts.Length / 2; i++)
@@ -253,7 +265,7 @@ namespace GFMSG.Pokemon
 
                     for (var i = 0; i < texts.Length; i++)
                     {
-                        append.AddRange(texts[i].Select(x => (ushort)x));
+                        handler.Append.AddRange(texts[i].Select(x => (ushort)x));
                     }
 
                     return list.ToArray();
@@ -262,10 +274,10 @@ namespace GFMSG.Pokemon
 
             AddConverter(new TagConverter("GENERAL_CTRL", "CHANGE_COLOR")
             {
-                ToText = (tag, args, options, buff) =>
+                ToText = (handler) =>
                 {
-                    ushort colorIndex = args[0];
-                    return options switch
+                    ushort colorIndex = handler.Parameters[0];
+                    return handler.Options switch
                     {
                         { Format: StringFormat.Markup } => $@"{colorIndex}",
                         { Format: StringFormat.Html } => $@"<font color=""{ColorTranslator.ToHtml(GeneralColorTable[colorIndex].Value)}"">",
@@ -274,18 +286,18 @@ namespace GFMSG.Pokemon
                     };
                 },
 
-                ToSymbol = (tag, args, append) =>
+                ToSymbol = (handler) =>
                 {
-                    ushort colorIndex = Convert.ToUInt16(args[0]);
+                    ushort colorIndex = Convert.ToUInt16(handler.Arguments[0]);
                     return new[] { colorIndex };
                 },
             });
 
             AddConverter(new TagConverter("GENERAL_CTRL", "BACK_COLOR", StringFormat.Plain | StringFormat.Html)
             {
-                ToText = (tag, args, options, buff) =>
+                ToText = (handler) =>
                 {
-                    return options switch
+                    return handler.Options switch
                     {
                         { Format: StringFormat.Html } => $@"</font>",
                         { Format: StringFormat.Plain } => $@"",
@@ -296,10 +308,10 @@ namespace GFMSG.Pokemon
 
             AddConverter(new TagConverter("SYSTEM", "CHANGE_COLOR")
             {
-                ToText = (tag, args, options, buff) =>
+                ToText = (handler) =>
                 {
-                    ushort colorIndex = args[0];
-                    return options switch
+                    ushort colorIndex = handler.Parameters[0];
+                    return handler.Options switch
                     {
                         { Format: StringFormat.Markup } => $@"{colorIndex}",
                         { Format: StringFormat.Html } when colorIndex == 0 => $@"</font>",
@@ -309,23 +321,23 @@ namespace GFMSG.Pokemon
                     };
                 },
 
-                ToSymbol = (tag, args, append) =>
+                ToSymbol = (handler) =>
                 {
-                    ushort colorIndex = Convert.ToUInt16(args[0]);
+                    ushort colorIndex = Convert.ToUInt16(handler.Arguments[0]);
                     return new[] { colorIndex };
                 },
             });
 
             AddConverter(new TagConverter("SYSTEM", "RUBY")
             {
-                ToText = (tag, args, options, buff) =>
+                ToText = (handler) =>
                 {
-                    var rblen = args[0];
-                    var rtlen = args[1];
-                    var rb = new string(args[2..(2 + rblen)].Select(x => (char)x).ToArray());
-                    var rt = new string(args[(2 + rblen)..(2 + rblen + rtlen)].Select(x => (char)x).ToArray());
-                    var def = buff.Read(rblen);
-                    return options switch
+                    var rblen = handler.Parameters[0];
+                    var rtlen = handler.Parameters[1];
+                    var rb = new string(handler.Parameters[2..(2 + rblen)].Select(x => (char)x).ToArray());
+                    var rt = new string(handler.Parameters[(2 + rblen)..(2 + rblen + rtlen)].Select(x => (char)x).ToArray());
+                    var def = handler.Queue.Read(rblen);
+                    return handler.Options switch
                     {
                         { Format: StringFormat.Markup } => $@"{rb},{rt}",
                         { Format: StringFormat.Html, IgnoreRuby: false } => $@"<ruby><rb>{rb}</rb><rp>(</rp><rt>{rt}</rt><rp>)</rp></ruby>",
@@ -336,16 +348,16 @@ namespace GFMSG.Pokemon
                     };
                 },
 
-                ToSymbol = (tag, args, append) =>
+                ToSymbol = (handler) =>
                 {
-                    var rb = args[0];
-                    var rt = args[1];
+                    var rb = handler.Arguments[0];
+                    var rt = handler.Arguments[1];
                     var list = new List<ushort>();
                     list.Add((ushort)rb.Length);
                     list.Add((ushort)rt.Length);
                     list.AddRange(rb.Select(x => (ushort)x));
                     list.AddRange(rt.Select(x => (ushort)x));
-                    append.AddRange(rb.Select(x => (ushort)x));
+                    handler.Append.AddRange(rb.Select(x => (ushort)x));
                     return list.ToArray();
                 },
             });

@@ -22,7 +22,14 @@
             var converters = GetConverters(cs.Code, options.Format);
             foreach(var converter in converters)
             {
-                var ret = converter.ToText(cs.Code, options);
+                var handler = new CharToTextHandler()
+                {
+                    Code = cs.Code,
+                    Options = options,
+                    CodeStart = converter.CodeStart,
+                    CodeEnd = converter.CodeEnd,
+                };
+                var ret = converter.ToText(handler);
                 if (ret != null)
                 {
                     return ret;

@@ -5,8 +5,8 @@ namespace GFMSG
 
     public class TagConverter
     {
-        public delegate string? ToTextDelegate(TagInfo tag, ushort[] args, StringOptions options, SymbolQueue buff);
-        public delegate ushort[] ToSymbolDelegate(TagInfo tag, string[] args, List<ushort> append);
+        public delegate string? ToTextDelegate(TagToTextHandler handler);
+        public delegate ushort[] ToSymbolDelegate(TagToSymbolHandler handler);
 
         public string GroupName { get; }
         public string? IndexName { get; }
@@ -38,30 +38,24 @@ namespace GFMSG
 
     }
 
-    public class CharConverter
-    {
-        public delegate string? ToTextDelegate(ushort code, StringOptions options);
-
-        public ushort CodeStart { get; }
-        public ushort CodeEnd { get; }
-        public StringFormat? Formats { get; }
-
-        public ToTextDelegate ToText { get; init; }
-
-        public CharConverter(ushort start, ushort end, StringFormat? formats = null)
-        {
-            CodeStart = start;
-            CodeEnd = end;
-            Formats = formats;
-        }
-    }
-
-    public class TagHandler
+    public class TagToTextHandler
     {
         public TagInfo Tag { get; set; }
-        public ushort[] Arguments { get; set; }
+        public ushort[] Parameters { get; set; }
         public StringOptions Options { get; set; }
-        public SymbolQueue Buff { get; set; }
+        [Obsolete]public SymbolQueue Queue { get; set; }
+
+        //public string? Begin { get; set; }
+        //public string? End { get; set; }
+        //public string? Before { get; set; }
+        //public string? After { get; set; }
+    }
+
+    public class TagToSymbolHandler
+    {
+        public TagInfo Tag { get; set; }
+        public string[] Arguments { get; set; }
+        [Obsolete]public List<ushort> Append { get; set; }
     }
 
 }

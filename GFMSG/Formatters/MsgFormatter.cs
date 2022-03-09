@@ -16,6 +16,8 @@ namespace GFMSG
         public TagProcessor Tags { get; set; } = new();
         public CharProcessor Chars { get; set; } = new();
 
+        public Func<RequireArguments, string?> RequireText { get; set; }
+
         public MsgFormatter()
         {
         }

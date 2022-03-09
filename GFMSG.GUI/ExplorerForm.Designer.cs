@@ -50,8 +50,8 @@
             this.devToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.testSaveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.testSaveAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.tsmiAnalyzeCharSymbols = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiAnalyzeTagSymbols = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiAnalyzeCharSymbols = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.tsslTableCount = new System.Windows.Forms.ToolStripStatusLabel();
             this.tsslEntryCount = new System.Windows.Forms.ToolStripStatusLabel();
@@ -79,6 +79,8 @@
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
+            this.tsmiStringOptions = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -254,19 +256,19 @@
             this.testSaveAllToolStripMenuItem.Text = "Test save all";
             this.testSaveAllToolStripMenuItem.Click += new System.EventHandler(this.testSaveAllToolStripMenuItem_Click);
             // 
-            // tsmiAnalyzeCharSymbols
-            // 
-            this.tsmiAnalyzeCharSymbols.Name = "tsmiAnalyzeCharSymbols";
-            this.tsmiAnalyzeCharSymbols.Size = new System.Drawing.Size(222, 24);
-            this.tsmiAnalyzeCharSymbols.Text = "Analyze CharSymbols";
-            this.tsmiAnalyzeCharSymbols.Click += new System.EventHandler(this.tsmiAnalyzeCharSymbols_Click);
-            // 
             // tsmiAnalyzeTagSymbols
             // 
             this.tsmiAnalyzeTagSymbols.Name = "tsmiAnalyzeTagSymbols";
             this.tsmiAnalyzeTagSymbols.Size = new System.Drawing.Size(222, 24);
             this.tsmiAnalyzeTagSymbols.Text = "Analyze TagSymbols";
             this.tsmiAnalyzeTagSymbols.Click += new System.EventHandler(this.tsmiAnalyzeTagSymbols_Click);
+            // 
+            // tsmiAnalyzeCharSymbols
+            // 
+            this.tsmiAnalyzeCharSymbols.Name = "tsmiAnalyzeCharSymbols";
+            this.tsmiAnalyzeCharSymbols.Size = new System.Drawing.Size(222, 24);
+            this.tsmiAnalyzeCharSymbols.Text = "Analyze CharSymbols";
+            this.tsmiAnalyzeCharSymbols.Click += new System.EventHandler(this.tsmiAnalyzeCharSymbols_Click);
             // 
             // statusStrip1
             // 
@@ -319,6 +321,9 @@
             // tsddbFormat
             // 
             this.tsddbFormat.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.tsddbFormat.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripSeparator5,
+            this.tsmiStringOptions});
             this.tsddbFormat.Image = ((System.Drawing.Image)(resources.GetObject("tsddbFormat.Image")));
             this.tsddbFormat.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.tsddbFormat.Name = "tsddbFormat";
@@ -517,6 +522,18 @@
             // 
             this.saveFileDialog1.Filter = "MsgData files (*.dat)|*.dat|All files (*.*)|*.*";
             // 
+            // tsmiStringOptions
+            // 
+            this.tsmiStringOptions.Name = "tsmiStringOptions";
+            this.tsmiStringOptions.Size = new System.Drawing.Size(180, 24);
+            this.tsmiStringOptions.Text = "Options";
+            this.tsmiStringOptions.Click += new System.EventHandler(this.tsmiStringOptions_Click);
+            // 
+            // toolStripSeparator5
+            // 
+            this.toolStripSeparator5.Name = "toolStripSeparator5";
+            this.toolStripSeparator5.Size = new System.Drawing.Size(177, 6);
+            // 
             // ExplorerForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
@@ -601,5 +618,7 @@
         private ToolStripSeparator toolStripSeparator3;
         private ToolStripSeparator toolStripSeparator4;
         private ToolStripDropDownButton tsddbFormat;
+        private ToolStripSeparator toolStripSeparator5;
+        private ToolStripMenuItem tsmiStringOptions;
     }
 }

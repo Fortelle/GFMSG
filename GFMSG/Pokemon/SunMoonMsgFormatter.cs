@@ -36,8 +36,8 @@
             // sm: message\55, usum: message\60
             AddConverter(new CharConverter(0xE800, 0xEE24, StringFormat.Html | StringFormat.Plain)
             {
-                ToText = (code, options) => {
-                    return ChineseCodes[code - 0xE800].ToString();
+                ToText = (handler) => {
+                    return ChineseCodes[handler.Code - handler.CodeStart].ToString();
                 }
             });
         }

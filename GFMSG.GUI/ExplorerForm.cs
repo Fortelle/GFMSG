@@ -6,7 +6,7 @@ namespace GFMSG.GUI
     public partial class ExplorerForm : Form
     {
         public MsgFormatter Formatter;
-        public MsgWrapper CurrentWrapper;
+        public MsgWrapper? CurrentWrapper;
         public string DirectoryPath { get; set; }
         public StringOptions CurrentStringOptions { get; set; }
 
@@ -777,17 +777,16 @@ namespace GFMSG.GUI
             var path = folderBrowserDialog1.SelectedPath;
             var mc = new MultilingualCollection();
             mc.Formatter = formatter;
-            var langmap = formatter.LanguageMap;
-            foreach (var (langcode, foldername) in langmap)
+            foreach (var (langcode, foldername) in formatter.LanguageMap)
             {
-                var langpath = Path.Combine(path, foldername) + "\\";
+                var langpath = Path.Combine(path, foldername);
                 if(!Directory.Exists(langpath)) continue;
                 var files = Directory.GetFiles(langpath, "*.dat", SearchOption.AllDirectories);
                 if (files.Length == 0) continue;
                 var wrappers = files.Select(x => new MsgWrapper(x)
                 {
                     LanguageCode = langcode,
-                    Name = x.Replace(langpath, "").Replace(".dat", "")
+                    Name = x.Replace(langpath + "\\", "").Replace(".dat", "")
                 }).ToArray();
                 mc.Wrappers.Add(langcode, wrappers);
             }

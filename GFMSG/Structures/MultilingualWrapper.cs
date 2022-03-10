@@ -81,11 +81,11 @@ namespace GFMSG
                     }
                 }
             }
-            return null;
+            throw new KeyNotFoundException();
         }
 
         // for debug
-        public string GetString(string langcode, string filename, string index)
+        public string GetString(string langcode, string filename, int index)
         {
             var wrappers = GetWrappers(langcode);
             var wrapper = wrappers.First(x => x.Name == filename);
@@ -94,6 +94,17 @@ namespace GFMSG
             var options = new StringOptions(StringFormat.Plain, langcode);
             return Formatter.Format(entry[0], options);
         }
+
+        public string GetString(string langcode, string filename, string name)
+        {
+            var wrappers = GetWrappers(langcode);
+            var wrapper = wrappers.First(x => x.Name == filename);
+            wrapper.Load();
+            var entry = wrapper[name];
+            var options = new StringOptions(StringFormat.Plain, langcode);
+            return Formatter.Format(entry[0], options);
+        }
+
         public string[] GetStrings(string langcode, string filename)
         {
             var wrappers = GetWrappers(langcode);

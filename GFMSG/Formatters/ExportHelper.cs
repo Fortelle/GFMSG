@@ -11,9 +11,9 @@ namespace GFMSG
         public static string GetText(MsgWrapper wrapper, MsgFormatter formatter, StringOptions options, bool includeId)
         {
             var sb = new StringBuilder();
-            options.LanguageCode = wrapper.LanguageCode;
             foreach (var entry in wrapper.GetTextEntries())
             {
+                options.LanguageCode = entry.Sequences![0].Language;
                 var text = formatter.Format(entry.Sequences![0], options);
                 if (!options.RemoveLineBreaks)
                 {
@@ -39,7 +39,7 @@ namespace GFMSG
             var langcodes = mw.Wrappers.Keys.ToArray();
             {
                 var list = new List<string>();
-                if (firstWrapper.HasNameTable)
+                if (firstWrapper.Version is FileVersion.GenVIII)
                 {
                     list.Add("id");
                     list.AddRange(langcodes);
@@ -50,7 +50,7 @@ namespace GFMSG
             for (var i = 0; i < length; i++)
             {
                 var list = new List<string>();
-                if (firstWrapper.HasNameTable)
+                if (firstWrapper.Version is FileVersion.GenVIII)
                 {
                     list.Add(firstWrapper[i].Name);
                 }
@@ -82,7 +82,6 @@ namespace GFMSG
 
         public static JsonNode GetJsonNode(MsgWrapper wrapper, MsgFormatter formatter, StringOptions options, bool includeId)
         {
-            options.LanguageCode = wrapper.LanguageCode;
             if (includeId)
             {
                 // warnning: ids are not guaranteed to be unique
@@ -92,12 +91,13 @@ namespace GFMSG
                     var id = entry.Name;
                     if (entry.Sequences.Count == 1)
                     {
+                        options.LanguageCode = entry.Sequences![0].Language;
                         var text = formatter.Format(entry.Sequences![0], options);
                         json.Add(id, JsonValue.Create(text));
                     }
                     else
                     {
-                        var text = entry.Sequences!.Select(x => formatter.Format(x, options)).ToArray();
+                        var text = entry.Sequences!.Select(x => formatter.Format(x, options with { LanguageCode = x.Language})).ToArray();
                         json.Add(id, JsonValue.Create(text));
                     }
                 }
@@ -110,12 +110,13 @@ namespace GFMSG
                 {
                     if (entry.Sequences.Count == 1)
                     {
+                        options.LanguageCode = entry.Sequences![0].Language;
                         var text = formatter.Format(entry.Sequences![0], options);
                         json.Add(JsonValue.Create(text));
                     }
                     else
                     {
-                        var text = entry.Sequences!.Select(x => formatter.Format(x, options)).ToArray();
+                        var text = entry.Sequences!.Select(x => formatter.Format(x, options with { LanguageCode = x.Language })).ToArray();
                         json.Add(JsonValue.Create(text));
                     }
                 }

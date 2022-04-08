@@ -6,6 +6,7 @@ namespace GFMSG
     public class TagSymbol : ISymbol
     {
         private static readonly Regex TagRegex = new(@"^\{TAG_(..)_(..)((?:[:,].+?)*)\}$");
+        public const char ParameterSeparator = ':';
 
         public byte Group { get; init; }
         public byte Index { get; init; }
@@ -13,6 +14,7 @@ namespace GFMSG
 
         public int Size => 6 + Parameters.Length * 2;
         public ushort Code => (ushort)((Group << 8) | Index);
+        public string GetName() => $"TAG_{Group:X2}_{Index:X2}";
 
         public TagSymbol(byte group, byte index, ushort[] parameters)
         {
@@ -24,13 +26,14 @@ namespace GFMSG
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.Append($"{{TAG_{Group:X2}_{Index:X2}");
+            sb.Append(@"{");
+            sb.Append(GetName());
             for (var i = 0; i < Parameters.Length; i++)
             {
-                sb.Append(i == 0 ? ':' : ',');
+                sb.Append(i == 0 ? ':' : ParameterSeparator);
                 sb.Append($"0x{Parameters[i]:X4}");
             }
-            sb.Append($"}}");
+            sb.Append(@"}");
             return sb.ToString();
         }
 
@@ -42,7 +45,7 @@ namespace GFMSG
             var parameters = m.Groups[3].Value == ""
                 ? Array.Empty<ushort>()
                 : m.Groups[3].Value
-                    .TrimStart(new[] { ',', ':' })
+                    .TrimStart(new[] { ':', ParameterSeparator })
                     .Split(',')
                     .Select(x => Convert.ToUInt16(x, 16))
                     .ToArray();

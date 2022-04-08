@@ -52,6 +52,7 @@
             this.testSaveAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiAnalyzeTagSymbols = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiAnalyzeCharSymbols = new System.Windows.Forms.ToolStripMenuItem();
+            this.analyzeLettersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.tsslTableCount = new System.Windows.Forms.ToolStripStatusLabel();
             this.tsslEntryCount = new System.Windows.Forms.ToolStripStatusLabel();
@@ -59,6 +60,10 @@
             this.tsslLanguage = new System.Windows.Forms.ToolStripStatusLabel();
             this.tsddbLanguage = new System.Windows.Forms.ToolStripDropDownButton();
             this.tsddbFormat = new System.Windows.Forms.ToolStripDropDownButton();
+            this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
+            this.tsmiStringOptions = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsslSpring = new System.Windows.Forms.ToolStripStatusLabel();
+            this.tsslVersion = new System.Windows.Forms.ToolStripStatusLabel();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tpFiles = new System.Windows.Forms.TabPage();
@@ -79,8 +84,6 @@
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
-            this.tsmiStringOptions = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -237,7 +240,8 @@
             this.testSaveToolStripMenuItem,
             this.testSaveAllToolStripMenuItem,
             this.tsmiAnalyzeTagSymbols,
-            this.tsmiAnalyzeCharSymbols});
+            this.tsmiAnalyzeCharSymbols,
+            this.analyzeLettersToolStripMenuItem});
             this.devToolStripMenuItem.Name = "devToolStripMenuItem";
             this.devToolStripMenuItem.Size = new System.Drawing.Size(47, 24);
             this.devToolStripMenuItem.Text = "Dev";
@@ -270,6 +274,13 @@
             this.tsmiAnalyzeCharSymbols.Text = "Analyze CharSymbols";
             this.tsmiAnalyzeCharSymbols.Click += new System.EventHandler(this.tsmiAnalyzeCharSymbols_Click);
             // 
+            // analyzeLettersToolStripMenuItem
+            // 
+            this.analyzeLettersToolStripMenuItem.Name = "analyzeLettersToolStripMenuItem";
+            this.analyzeLettersToolStripMenuItem.Size = new System.Drawing.Size(222, 24);
+            this.analyzeLettersToolStripMenuItem.Text = "Analyze Letters";
+            this.analyzeLettersToolStripMenuItem.Click += new System.EventHandler(this.analyzeLettersToolStripMenuItem_Click);
+            // 
             // statusStrip1
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -278,7 +289,9 @@
             this.tsslLanguageLabel,
             this.tsslLanguage,
             this.tsddbLanguage,
-            this.tsddbFormat});
+            this.tsddbFormat,
+            this.tsslSpring,
+            this.tsslVersion});
             this.statusStrip1.Location = new System.Drawing.Point(0, 703);
             this.statusStrip1.Name = "statusStrip1";
             this.statusStrip1.Size = new System.Drawing.Size(1008, 26);
@@ -306,8 +319,8 @@
             // tsslLanguage
             // 
             this.tsslLanguage.Name = "tsslLanguage";
-            this.tsslLanguage.Size = new System.Drawing.Size(152, 21);
-            this.tsslLanguage.Text = "toolStripStatusLabel2";
+            this.tsslLanguage.Size = new System.Drawing.Size(76, 21);
+            this.tsslLanguage.Text = "Language";
             // 
             // tsddbLanguage
             // 
@@ -315,8 +328,8 @@
             this.tsddbLanguage.Image = ((System.Drawing.Image)(resources.GetObject("tsddbLanguage.Image")));
             this.tsddbLanguage.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.tsddbLanguage.Name = "tsddbLanguage";
-            this.tsddbLanguage.Size = new System.Drawing.Size(208, 24);
-            this.tsddbLanguage.Text = "toolStripDropDownButton1";
+            this.tsddbLanguage.Size = new System.Drawing.Size(89, 24);
+            this.tsddbLanguage.Text = "Language";
             // 
             // tsddbFormat
             // 
@@ -327,12 +340,35 @@
             this.tsddbFormat.Image = ((System.Drawing.Image)(resources.GetObject("tsddbFormat.Image")));
             this.tsddbFormat.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.tsddbFormat.Name = "tsddbFormat";
-            this.tsddbFormat.Size = new System.Drawing.Size(208, 24);
-            this.tsddbFormat.Text = "toolStripDropDownButton1";
+            this.tsddbFormat.Size = new System.Drawing.Size(69, 24);
+            this.tsddbFormat.Text = "Format";
+            // 
+            // toolStripSeparator5
+            // 
+            this.toolStripSeparator5.Name = "toolStripSeparator5";
+            this.toolStripSeparator5.Size = new System.Drawing.Size(128, 6);
+            // 
+            // tsmiStringOptions
+            // 
+            this.tsmiStringOptions.Name = "tsmiStringOptions";
+            this.tsmiStringOptions.Size = new System.Drawing.Size(131, 24);
+            this.tsmiStringOptions.Text = "Options";
+            this.tsmiStringOptions.Click += new System.EventHandler(this.tsmiStringOptions_Click);
+            // 
+            // tsslSpring
+            // 
+            this.tsslSpring.Name = "tsslSpring";
+            this.tsslSpring.Size = new System.Drawing.Size(478, 21);
+            this.tsslSpring.Spring = true;
+            // 
+            // tsslVersion
+            // 
+            this.tsslVersion.Name = "tsslVersion";
+            this.tsslVersion.Size = new System.Drawing.Size(66, 21);
+            this.tsslVersion.Text = "GFMSG2";
             // 
             // splitContainer1
             // 
-            this.splitContainer1.Cursor = System.Windows.Forms.Cursors.VSplit;
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitContainer1.Location = new System.Drawing.Point(0, 28);
             this.splitContainer1.Name = "splitContainer1";
@@ -340,12 +376,10 @@
             // splitContainer1.Panel1
             // 
             this.splitContainer1.Panel1.Controls.Add(this.tabControl1);
-            this.splitContainer1.Panel1.Cursor = System.Windows.Forms.Cursors.Default;
             // 
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.lstContent);
-            this.splitContainer1.Panel2.Cursor = System.Windows.Forms.Cursors.Default;
             this.splitContainer1.Size = new System.Drawing.Size(1008, 675);
             this.splitContainer1.SplitterDistance = 252;
             this.splitContainer1.TabIndex = 2;
@@ -520,19 +554,7 @@
             // 
             // saveFileDialog1
             // 
-            this.saveFileDialog1.Filter = "MsgData files (*.dat)|*.dat|All files (*.*)|*.*";
-            // 
-            // tsmiStringOptions
-            // 
-            this.tsmiStringOptions.Name = "tsmiStringOptions";
-            this.tsmiStringOptions.Size = new System.Drawing.Size(180, 24);
-            this.tsmiStringOptions.Text = "Options";
-            this.tsmiStringOptions.Click += new System.EventHandler(this.tsmiStringOptions_Click);
-            // 
-            // toolStripSeparator5
-            // 
-            this.toolStripSeparator5.Name = "toolStripSeparator5";
-            this.toolStripSeparator5.Size = new System.Drawing.Size(177, 6);
+            this.saveFileDialog1.Filter = "MsgData1 files (*.dat)|*.dat|MsgData2 files (*.dat)|*.dat|All files (*.*)|*.*";
             // 
             // ExplorerForm
             // 
@@ -620,5 +642,8 @@
         private ToolStripDropDownButton tsddbFormat;
         private ToolStripSeparator toolStripSeparator5;
         private ToolStripMenuItem tsmiStringOptions;
+        private ToolStripStatusLabel tsslSpring;
+        private ToolStripStatusLabel tsslVersion;
+        private ToolStripMenuItem analyzeLettersToolStripMenuItem;
     }
 }

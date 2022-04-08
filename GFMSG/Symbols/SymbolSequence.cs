@@ -3,26 +3,40 @@
     public class SymbolSequence
     {
         public string? Name { get; set; }
-        public ISymbol[] Symbols { get; set; }
+        public ushort[] Codes { get; set; }
+        //public ISymbol[] Symbols { get; set; }
         public bool NullFill { get; set; }
-        public GrammaticalAttribute Grammatical { get; set; }
+        public bool Compressed { get; set; }
+        public GrammaticalAttribute? Grammatical { get; set; }
+        public string Language { get; set; }
+        /*
+        public SymbolSequence(ISymbol[] symbols)
+        {
+            Symbols = symbols;
+        }
 
         public SymbolSequence(ISymbol[] symbols, GrammaticalAttribute grammatical)
         {
             Symbols = symbols;
             Grammatical = grammatical;
         }
-
-        public SymbolSequence(ushort[] codes, GrammaticalAttribute grammatical)
+        */
+        public SymbolSequence(ushort[] codes)
         {
-            Symbols = MsgFormatter.CodesToSymbols(codes, out bool isnullFilled);
-            Grammatical = grammatical;
-            NullFill = isnullFilled;
+            Codes = codes;
         }
 
-        public ushort[] ToCodes()
+        public SymbolSequence(ushort[] codes, string lang)
         {
-            return MsgFormatter.SymbolsToCodes(Symbols, NullFill);
+            Codes = codes;
+            Language = lang;
+        }
+
+        public SymbolSequence(ushort[] codes, string lang, GrammaticalAttribute grammatical)
+        {
+            Codes = codes;
+            Language = lang;
+            Grammatical = grammatical;
         }
     }
 }

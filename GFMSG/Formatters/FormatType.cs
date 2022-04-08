@@ -4,10 +4,12 @@
     [Flags]
     public enum StringFormat
     {
-        Raw = 0,
-        Markup = 1,
-        Plain = 2,
-        Html = 4,
+        Raw = 1,
+        Markup = 2,
+        Plain = 4,
+        Html = 8,
+        Hex8 = 16,
+        Hex16 = 32,
     }
 
     public enum GenderForm
@@ -30,6 +32,16 @@
         Text = 0,
         Json = 1,
         Xml = 2,
+    }
+
+    public enum FileVersion
+    {
+        Unknown = 0,
+
+        GenIV,   // dp, hgss, pl
+        GenV,    // bw, b2w2
+        GenVI,   // 3ds
+        GenVIII, // ns
     }
 
 }

@@ -4,9 +4,10 @@ namespace GFMSG
 {
     public class MsgWrapper
     {
+        public FileVersion Version { get; set; }
         public List<Entry> Entries { get; set; }
         public string? Name { get; set; }
-        public int LanguageNumber { get; set; }
+        public int LanguageCount { get; set; }
         public string? Filepath { get; set; }
         public string? Nodepath { get; set; }
 
@@ -14,48 +15,59 @@ namespace GFMSG
         public bool IsError { get; set; }
         public bool CanSave { get; set; }
         public bool Loaded { get; set; }
-        public bool HasNameTable { get; set; }
         public bool NullFill { get; set; }
 
         public bool Changed => IsNew || Entries.Any(x => x.Changed);
 
-        public string LanguageCode { get; set; }
+        public string Group { get; set; }
+        public string[] LanguageCodes { get; set; }
+
+        private ushort V1Seed { get; set; }
+        private bool V1Compressed { get; set; }
 
         public MsgWrapper()
         {
             Entries = new();
         }
 
-        public MsgWrapper(string path) : this()
+        public MsgWrapper(string path, FileVersion version) : this()
         {
+            Version = version;
             Filepath = path;
             Name = Path.GetFileNameWithoutExtension(path);
         }
 
-        public MsgWrapper(MsgData msg, string name) : this()
+        public MsgWrapper(MsgDataV1 msg, string name, string langcode) : this()
         {
-            Load(msg, null);
             Name = name;
+            LanguageCodes = new[] { langcode };
+            Version = FileVersion.GenIV;
+            Load(msg);
         }
 
-        public static MsgWrapper CreateFile(string path, bool save)
+        public MsgWrapper(MsgDataV2 msg, string name, FileVersion version, string[] langcodes) : this()
         {
-            var mw = new MsgWrapper(path)
+            Name = name;
+            LanguageCodes = langcodes;
+            Version = version;
+            Load(msg, null);
+        }
+
+        public static MsgWrapper CreateFile(string path, FileVersion version)
+        {
+            var mw = new MsgWrapper(path, version)
             {
-                HasNameTable = true,
+                //HasNameTable = nameTable,
                 IsNew = true,
             };
-            if (save)
-            {
-                mw.Save(false);
-            }
+            mw.Save(false);
             return mw;
         }
 
-        public static MsgWrapper OpenFile(string path)
+        public static MsgWrapper OpenFile(string path, FileVersion version)
         {
-            var mw = new MsgWrapper(path);
-            mw.Load();
+            var mw = new MsgWrapper(path, version);
+            //mw.Load();
             return mw;
         }
 
@@ -68,10 +80,37 @@ namespace GFMSG
 
             try
             {
-                var msg = new MsgData(Filepath);
-                var tblPath = Path.ChangeExtension(Filepath, ".tbl");
-                var ahtb = File.Exists(tblPath) ? new AHTB(tblPath) : null;
-                Load(msg, ahtb);
+                switch (Version)
+                {
+                    case FileVersion.GenIV:
+                        {
+                            var msg = new MsgDataV1(Filepath);
+                            Load(msg);
+                        }
+                        break;
+                    case FileVersion.GenV:
+                        {
+                            var msg = new MsgDataV2(Filepath);
+                            Load(msg, null);
+                        }
+                        break;
+                    case FileVersion.GenVI:
+                        {
+                            var msg = new MsgDataV2(Filepath);
+                            Load(msg, null);
+                        }
+                        break;
+                    case FileVersion.GenVIII:
+                        {
+                            var msg = new MsgDataV2(Filepath);
+                            var tblPath = Path.ChangeExtension(Filepath, ".tbl");
+                            var ahtb = File.Exists(tblPath) ? new AHTB(tblPath) : null;
+                            Load(msg, ahtb);
+                        }
+                        break;
+                    default:
+                        throw new NotSupportedException();
+                }
                 return true;
             }
             catch
@@ -88,54 +127,63 @@ namespace GFMSG
             return Entries.Select(x => x.Name!).ToArray();
         }
 
-        public (ushort[], GrammaticalAttribute)[][] GetData()
-        {
-            Load();
-            return Enumerable.Range(0, LanguageNumber)
-                .Select(iLang => Entries.TakeWhile(x => x.HasText).Select(entry => (entry[iLang].ToCodes(), entry[iLang].Grammatical)).ToArray())
-                .ToArray();
-        }
-
         public Entry[] GetTextEntries()
         {
             Load();
             return  Entries.TakeWhile(x => x.HasText).ToArray();
         }
 
-        public void Load(MsgData msg, AHTB? ahtb)
+        public void Load(MsgDataV1 msg)
         {
-            HasNameTable = ahtb is not null;
+            LanguageCount = 1;
+            V1Seed = msg.Seed;
+            V1Compressed = msg.Compressed;
 
-            var data = msg.GetData();
+            NullFill = true;
 
-            LanguageNumber = data.Length;
+            for (var iEntry = 0; iEntry < msg.Data.Length; iEntry++)
+            {
+                var seq = Enumerable.Range(0, 1)
+                    .Select(iTable => msg.Data[iEntry])
+                    .Select(x => {
+                        //var symbols = MsgFormatterGenIV.CodesToSymbols(x, out bool nullfill);
+                        var sequence = new SymbolSequence(x, GetLanguageCodes(0));
+                        //NullFill &= nullfill;
+                        return sequence;
+                    });
+                var entry = new Entry(seq);
+                Entries.Add(entry);
+            }
+
+            Loaded = true;
+        }
+
+        public void Load(MsgDataV2 msg, AHTB? ahtb)
+        {
+            var data = msg.Entries;
+
+            LanguageCount = data.Length;
+            NullFill = true;
 
             for (var iEntry = 0; iEntry < data[0].Length; iEntry++)
             {
                 var seq = Enumerable.Range(0, data.Length)
                     .Select(iTable => data[iTable][iEntry])
-                    .Select(x => new SymbolSequence(x.Item1, x.Item2) { Name = ahtb?.Entries[iEntry].Text })
-                    ;
-                var entry = HasNameTable
-                    ? new Entry(ahtb.Entries[iEntry].Text, seq)
+                    .Select((x, iTable) => new SymbolSequence(x.Codes, GetLanguageCodes(iTable), x.UserParam) { Name = ahtb?.Entries[iEntry].Text });
+                var entry = ahtb is not null
+                    ? new Entry(ahtb.Entries[iEntry].Text, ahtb.Entries[iEntry].Hash, seq)
                     : new Entry(seq);
                 Entries.Add(entry);
             }
 
-            if (HasNameTable && ahtb.Entries.Length > data[0].Length)
+            if (ahtb?.Entries.Length > data[0].Length)
             {
                 for (var iEntry = data[0].Length; iEntry < ahtb.Entries.Length; iEntry++)
                 {
-                    var entry = new Entry(ahtb.Entries[iEntry].Text);
+                    var entry = new Entry(ahtb.Entries[iEntry].Text, ahtb.Entries[iEntry].Hash);
                     Entries.Add(entry);
                 }
             }
-
-            NullFill = Entries.Any(x => x.HasText)
-                && Entries.All(x => !x.HasText || x.Sequences.All(y => (y.Symbols.Length % 2 == 0)
-                && y.Symbols[0..(y.Symbols.Length / 2)].All(z => z is not CharSymbol cs || cs.Code != 0)
-                && y.Symbols[(y.Symbols.Length / 2)..].All(z => z is CharSymbol cs && cs.Code == 0)
-                ));
 
             Loaded = true;
         }
@@ -147,27 +195,45 @@ namespace GFMSG
 
         public void Save(string path, bool backup)
         {
+            var msgPath = path;
+            if (backup && Path.GetExtension(path) != ".tmp")
             {
-                var msgPath = path;
-                if (backup && Path.GetExtension(path) != ".tmp")
+                var bakMsgPath = msgPath + ".bak";
+                if (File.Exists(msgPath) && !File.Exists(bakMsgPath))
                 {
-                    var bakMsgPath = msgPath + ".bak";
-                    if (File.Exists(msgPath) && !File.Exists(bakMsgPath))
-                    {
-                        File.Move(msgPath, bakMsgPath);
-                    }
+                    File.Move(msgPath, bakMsgPath);
                 }
+            }
 
+            if(Version is FileVersion.GenIV)
+            {
                 var tempMsgPath = Path.GetTempFileName();
-                var data = Enumerable.Range(0, LanguageNumber)
-                    .Select(iLang => Entries.TakeWhile(x => x.HasText).Select(entry => (entry[iLang].ToCodes(), entry[iLang].Grammatical)).ToArray())
+                var data = Entries
+                        //.Select(entry => MsgFormatterGenIV.SymbolsToCodes(entry[0].Symbols, entry[0].NullFill))
+                        .Select(entry => entry[0].Codes)
+                        .ToArray();
+                var msg = new MsgDataV1(data, V1Seed)
+                {
+                    Compressed = V1Compressed,
+                };
+                msg.Save(tempMsgPath);
+                File.Move(tempMsgPath, msgPath, true);
+            }
+            else if (Version is >= FileVersion.GenV)
+            {
+                var tempMsgPath = Path.GetTempFileName();
+                var data = Enumerable.Range(0, LanguageCount)
+                    .Select(iLang => Entries
+                        .TakeWhile(x => x.HasText)
+                        .Select(entry => new MsgDataV2.StringEntry(entry[iLang].Codes, entry[iLang].Grammatical!.Value)).ToArray()
+                        )
                     .ToArray();
-                var msg = new MsgData(data);
+                var msg = new MsgDataV2(data);
                 msg.Save(tempMsgPath);
                 File.Move(tempMsgPath, msgPath, true);
             }
 
-            if (HasNameTable)
+            if (Version is FileVersion.GenVIII)
             {
                 var namePath = Path.ChangeExtension(path, ".tbl");
                 if (backup)
@@ -190,6 +256,22 @@ namespace GFMSG
             IsNew = false;
         }
 
+        public string GetLanguageCodes(int index)
+        {
+            if(LanguageCodes == null || LanguageCodes.Length == 0)
+            {
+                return "";
+            }
+            else if (LanguageCodes.Length <= index)
+            {
+                return LanguageCodes[0];
+            }
+            else
+            {
+                return LanguageCodes[index];
+            }
+        }
+
         public bool TestSave()
         {
             if (Filepath == null)
@@ -201,9 +283,29 @@ namespace GFMSG
                 var msgPath = Filepath;
                 var ms = new MemoryStream();
                 var bw = new BinaryWriter(ms);
-                var data = GetData();
-                var msg = new MsgData(data);
-                msg.Save(bw);
+                Load();
+
+                if (Version is FileVersion.GenIV)
+                {
+                    var data = Entries
+                            .Select(entry => entry[0].Codes)
+                            .ToArray();
+                    var msg = new MsgDataV1(data, V1Seed)
+                    {
+                        Compressed = V1Compressed,
+                    };
+                    msg.Save(bw);
+                }
+                else// if (Version is FileVersion.GenV or FileVersion.GFMSG2WithKeys)
+                {
+                    var tempMsgPath = Path.GetTempFileName();
+                    var data = Enumerable.Range(0, LanguageCount)
+                        .Select(iLang => Entries.TakeWhile(x => x.HasText).Select(entry => new MsgDataV2.StringEntry(entry[iLang].Codes, entry[iLang].Grammatical!.Value)).ToArray())
+                        .ToArray();
+                    var msg = new MsgDataV2(data);
+                    msg.Save(bw);
+                }
+
                 var bytes1 = File.ReadAllBytes(msgPath);
                 var bytes2 = ms.ToArray();
 
@@ -213,7 +315,7 @@ namespace GFMSG
                 }
             }
 
-            if (HasNameTable)
+            if (Version is FileVersion.GenVIII)
             {
                 var namePath = Path.ChangeExtension(Filepath, ".tbl");
                 var ms = new MemoryStream();
@@ -246,6 +348,19 @@ namespace GFMSG
             }
         }
 
+        public Entry this[ulong hash]
+        {
+            get
+            {
+                var index = Entries.FindIndex(x => x.Hash == hash);
+                if (index == -1)
+                {
+                    throw new IndexOutOfRangeException();
+                }
+                return this[index];
+            }
+        }
+
         public Entry this[int index]
         {
             get => Entries[index];
@@ -254,6 +369,7 @@ namespace GFMSG
         public class Entry : IEnumerable<SymbolSequence>
         {
             public string? Name { get; set; }
+            public ulong? Hash { get; set; } // for faster querying
             public List<SymbolSequence>? Sequences { get; set; }
             public bool HasText => Sequences != null;
             public bool Changed { get; set; }
@@ -263,9 +379,10 @@ namespace GFMSG
                 Changed = false;
             }
 
-            public Entry(string name) : this()
+            public Entry(string name, ulong hash) : this()
             {
                 Name = name;
+                Hash = hash;
             }
 
             public Entry(IEnumerable<SymbolSequence> sequences) : this()
@@ -273,9 +390,10 @@ namespace GFMSG
                 Sequences = new(sequences);
             }
 
-            public Entry(string name, IEnumerable<SymbolSequence> sequences) : this()
+            public Entry(string name, ulong hash, IEnumerable<SymbolSequence> sequences) : this()
             {
                 Name = name;
+                Hash = hash;
                 Sequences = new(sequences);
             }
 

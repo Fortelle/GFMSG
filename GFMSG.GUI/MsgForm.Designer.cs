@@ -65,7 +65,7 @@
             this.label4 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
             this.txtPreview = new System.Windows.Forms.TextBox();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.grpGrammar = new System.Windows.Forms.GroupBox();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.txtMarkup = new System.Windows.Forms.TextBox();
@@ -85,7 +85,7 @@
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.tlpContent.SuspendLayout();
-            this.groupBox1.SuspendLayout();
+            this.grpGrammar.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -482,7 +482,6 @@
             // 
             this.splitContainer1.Cursor = System.Windows.Forms.Cursors.VSplit;
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.FixedPanel = System.Windows.Forms.FixedPanel.Panel2;
             this.splitContainer1.Location = new System.Drawing.Point(0, 0);
             this.splitContainer1.Name = "splitContainer1";
             // 
@@ -508,7 +507,7 @@
             this.tlpContent.Controls.Add(this.label4, 0, 0);
             this.tlpContent.Controls.Add(this.label5, 0, 2);
             this.tlpContent.Controls.Add(this.txtPreview, 0, 1);
-            this.tlpContent.Controls.Add(this.groupBox1, 0, 5);
+            this.tlpContent.Controls.Add(this.grpGrammar, 0, 5);
             this.tlpContent.Controls.Add(this.tabControl1, 0, 3);
             this.tlpContent.Controls.Add(this.lblError, 0, 4);
             this.tlpContent.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -541,7 +540,7 @@
             this.label5.AutoSize = true;
             this.label5.Location = new System.Drawing.Point(3, 176);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(85, 1);
+            this.label5.Size = new System.Drawing.Size(65, 1);
             this.label5.TabIndex = 1;
             this.label5.Text = "Markup:";
             // 
@@ -556,16 +555,16 @@
             this.txtPreview.Size = new System.Drawing.Size(530, 138);
             this.txtPreview.TabIndex = 2;
             // 
-            // groupBox1
+            // grpGrammar
             // 
-            this.groupBox1.Controls.Add(this.tlpGrammar);
-            this.groupBox1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.groupBox1.Location = new System.Drawing.Point(3, 383);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(530, 153);
-            this.groupBox1.TabIndex = 12;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Grammar:";
+            this.grpGrammar.Controls.Add(this.tlpGrammar);
+            this.grpGrammar.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.grpGrammar.Location = new System.Drawing.Point(3, 383);
+            this.grpGrammar.Name = "grpGrammar";
+            this.grpGrammar.Size = new System.Drawing.Size(530, 153);
+            this.grpGrammar.TabIndex = 12;
+            this.grpGrammar.TabStop = false;
+            this.grpGrammar.Text = "Grammar:";
             // 
             // tabControl1
             // 
@@ -667,7 +666,7 @@
             this.splitContainer1.ResumeLayout(false);
             this.tlpContent.ResumeLayout(false);
             this.tlpContent.PerformLayout();
-            this.groupBox1.ResumeLayout(false);
+            this.grpGrammar.ResumeLayout(false);
             this.tabControl1.ResumeLayout(false);
             this.tabPage1.ResumeLayout(false);
             this.tabPage1.PerformLayout();
@@ -717,7 +716,7 @@
         private RadioButton radInitialSound2;
         private RadioButton radInitialSound3;
         private TableLayoutPanel tableLayoutPanel3;
-        private GroupBox groupBox1;
+        private GroupBox grpGrammar;
         private TabControl tabControl1;
         private TabPage tabPage1;
         private TabPage tabPage2;

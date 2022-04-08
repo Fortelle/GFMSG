@@ -2,8 +2,6 @@
 {
     public class CharSymbol : ISymbol
     {
-        public static CharSymbol LineFeed => new(MsgFormatter.LINE_FEED_CODE);
-
         public ushort Code { get; set; }
 
         public int Size => 2;

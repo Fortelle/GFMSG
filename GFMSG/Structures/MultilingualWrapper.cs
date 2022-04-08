@@ -10,6 +10,7 @@ namespace GFMSG
     public class MultilingualCollection
     {
         public Dictionary<string, MsgWrapper[]> Wrappers { get; set; } = new();
+        public FileVersion Version { get; set; }
 
         private MsgFormatter formatter;
         public MsgFormatter Formatter
@@ -45,12 +46,12 @@ namespace GFMSG
             foreach (var name in names)
             {
                 var mmw = new MultilingualWrapper(name);
-                foreach (var (langcode, wrappers) in Wrappers)
+                foreach (var (groupname, wrappers) in Wrappers)
                 {
                     var wrapper = wrappers.FirstOrDefault(x => x.Name == name);
                     if (wrapper != null)
                     {
-                        mmw.Add(langcode, wrapper);
+                        mmw.Add(groupname, wrapper);
                     }
                 }
                 list.Add(mmw);
@@ -105,6 +106,16 @@ namespace GFMSG
             return Formatter.Format(entry[0], options);
         }
 
+        public string GetString(string langcode, string filename, ulong hash)
+        {
+            var wrappers = GetWrappers(langcode);
+            var wrapper = wrappers.First(x => x.Name == filename);
+            wrapper.Load();
+            var entry = wrapper[hash];
+            var options = new StringOptions(StringFormat.Plain, langcode);
+            return Formatter.Format(entry[0], options);
+        }
+
         public string[] GetStrings(string langcode, string filename)
         {
             var wrappers = GetWrappers(langcode);
@@ -128,9 +139,9 @@ namespace GFMSG
             Wrappers = new();
         }
 
-        public void Add(string langcode, MsgWrapper wrapper)
+        public void Add(string groupname, MsgWrapper wrapper)
         {
-            Wrappers.Add(langcode, wrapper);
+            Wrappers.Add(groupname, wrapper);
         }
         
     }

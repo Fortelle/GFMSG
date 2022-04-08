@@ -4,14 +4,12 @@ namespace GFMSG
 {
     public class TagProcessor
     {
-        public record TagInfo(byte? GroupValue, string? GroupName, byte? IndexValue, string? IndexName);
+        public record ConverterInfo(byte Group, byte Index, string Name);
 
         public static readonly Regex RawTagRegex = new(@"^\{TAG_(..)_(..)(?::(.+))*\}$");
-        public static readonly Regex MarkupTagRegex = new(@"^\{(.+?):(.+?)(?::(.+))*\}$");
-
+        public static readonly Regex MarkupTagRegex = new(@"^\{(.+?)(?::(.+))*\}$");
+        
         public List<TagConverter> Converters { get; set; } = new();
-        public List<(byte Group, string Name)> GroupNames { get; set; } = new();
-        public List<(byte Group, byte Index, string Name)> IndexNames { get; set; } = new();
 
         public TagProcessor()
         {
@@ -19,35 +17,43 @@ namespace GFMSG
 
         public string ToText(TagSymbol ts, StringOptions options, SymbolQueue buff)
         {
+            switch (options.Format)
+            {
+                case StringFormat.Raw:
+                    return ts.ToString();
+            }
+            
             string? ret = null;
 
-            var taginfo = GetTagInfo(ts.Group, ts.Index);
-            var converters = GetConverters(taginfo, options.Format);
+            var converter = GetConverter(ts.Group, ts.Index);
+            var tagName = converter?.Name ?? ts.GetName();
 
-            foreach (var converter in converters)
+            if (converter != null)
             {
-                var handler = new TagToTextHandler()
+                if (converter.CheckFormat(options.Format) && converter.ToText != null)
                 {
-                    Tag = taginfo,
-                    Parameters = ts.Parameters,
-                    Options = options,
-                    Queue = buff,
-                };
-                ret = converter.ToText(handler);
-                if (ret != null) break;
+                    var handler = new TagToTextHandler()
+                    {
+                        Group = ts.Group,
+                        Index = ts.Index,
+                        Name = tagName,
+                        Parameters = ts.Parameters,
+                        Options = options,
+                        Queue = buff,
+                    };
+                    ret = converter.ToText(handler);
+                }
             }
 
             if (ret != null && options.Format == StringFormat.Markup)
             {
                 ret = "{"
-                    + (taginfo.GroupName ?? "0x" + ts.Group.ToString("X2"))
-                    + ":"
-                    + (taginfo.IndexName ?? "0x" + ts.Index.ToString("X2"))
+                    + tagName
                     + (ret == "" ? "" : (":" + ret))
                     + "}";
             }
 
-            if (ret == null) // no parser matched or parser returns null
+            if (ret == null)
             {
                 switch (options.Format)
                 {
@@ -57,12 +63,10 @@ namespace GFMSG
                     case StringFormat.Markup:
                         {
                             ret = "{";
-                            ret += taginfo.GroupName ?? "0x" + ts.Group.ToString("X2");
-                            ret += ":";
-                            ret += taginfo.IndexName ?? "0x" + ts.Index.ToString("X2");
+                            ret += tagName;
                             for (var i = 0; i < ts.Parameters.Length; i++)
                             {
-                                ret += i == 0 ? ":" : ',';
+                                ret += i == 0 ? ":" : TagSymbol.ParameterSeparator;
                                 ret += $"0x{ts.Parameters[i]:X4}";
                             }
                             ret += "}";
@@ -82,44 +86,61 @@ namespace GFMSG
             return ret;
         }
 
-
         public ISymbol[] FromMarkup(string text)
         {
             var m = MarkupTagRegex.Match(text);
-            var tagGroup = m.Groups[1].Value;
-            var tagIndex = m.Groups[2].Value;
-            var args = m.Groups[3].Value != ""
-                ? m.Groups[3].Value.Split(',')
+            var tagName = m.Groups[1].Value;
+            var args = m.Groups[2].Value != ""
+                ? m.Groups[2].Value.Split(':')
                 : Array.Empty<string>();
 
-            var taginfo = GetTagInfo(tagGroup, tagIndex);
-            var converter = GetConverters(taginfo, StringFormat.Markup).FirstOrDefault(x => x.ToSymbol != null);
-            if (converter != null)
+            if (tagName.StartsWith("TAG_"))
             {
-                var handler = new TagToSymbolHandler()
-                {
-                    Tag = taginfo,
-                    Arguments = args,
-                    Append = new List<ushort>(),
-                };
-                var parameters = converter.ToSymbol!(handler);
-                return new ISymbol[] {
-                    new TagSymbol(taginfo.GroupValue.Value, taginfo.IndexValue.Value, parameters),
-                }
-                .Concat(handler.Append.Select(x=> new CharSymbol(x)))
-                .ToArray();
-            }
-            else if(taginfo.GroupValue.HasValue && taginfo.IndexValue.HasValue)
-            {
+                var tagGroup = Convert.ToByte(tagName.Substring(4, 2), 16);
+                var tagIndex = Convert.ToByte(tagName.Substring(7, 2), 16);
+
                 var parameters = args.Select(x => Convert.ToUInt16(x, 16)).ToArray();
                 return new[] {
-                    new TagSymbol(taginfo.GroupValue.Value, taginfo.IndexValue.Value, parameters)
+                    new TagSymbol(tagGroup, tagIndex, parameters)
                 };
             }
             else
             {
-                throw new NotImplementedException();
+                var converter = GetConverter(tagName);
+
+                if (converter != null)
+                {
+                    var tagGroup = converter.Group;
+                    var tagIndex = converter.Index!.Value;
+
+                    if (converter.CheckFormat(StringFormat.Markup) && converter.ToSymbol != null)
+                    {
+                        var handler = new TagToSymbolHandler()
+                        {
+                            Group = tagGroup,
+                            Index = tagIndex,
+                            Name = converter.Name!,
+                            Arguments = args,
+                            Append = new List<ushort>(),
+                        };
+                        var parameters = converter.ToSymbol(handler);
+                        return new ISymbol[] {
+                            new TagSymbol(tagGroup, tagIndex, parameters),
+                        }
+                        .Concat(handler.Append.Select(x => new CharSymbol(x)))
+                        .ToArray();
+                    }
+                    else
+                    {
+                        var parameters = args.Select(x => Convert.ToUInt16(x, 16)).ToArray();
+                        return new[] {
+                            new TagSymbol(tagGroup, tagIndex, parameters)
+                        };
+                    }
+                }
             }
+
+            throw new NotSupportedException($"Unrecognized tag name \"{tagName}\".");
         }
 
         public static TagSymbol FromRaw(string text)
@@ -128,107 +149,39 @@ namespace GFMSG
             var tagGroup = Convert.ToByte(m.Groups[1].Value, 16);
             var tagIndex = Convert.ToByte(m.Groups[2].Value, 16);
             var parameters = m.Groups[3].Value != ""
-                ? m.Groups[3].Value.Split(',').Select(x => Convert.ToUInt16(x, 16)).ToArray()
+                ? m.Groups[3].Value.Split(TagSymbol.ParameterSeparator).Select(x => Convert.ToUInt16(x, 16)).ToArray()
                 : Array.Empty<ushort>();
             var ts = new TagSymbol(tagGroup, tagIndex, parameters);
             return ts;
         }
 
-        private TagConverter[] GetConverters(TagInfo taginfo, StringFormat format)
+        private TagConverter? GetConverter(byte group, byte index)
         {
-            var converters = Converters.AsEnumerable();
-
-            if (taginfo.GroupName != null)
+            var i = Converters.FindIndex(x => x.Group == group && x.Index == index);
+            if (i != -1)
             {
-                converters = converters.Where(x => x.GroupName == taginfo.GroupName);
-            }
-            else
-            {
-                return null;
+                return Converters[i];
             }
 
-            converters = converters.Where(x => x.Formats == null || x.Formats.Value.HasFlag(format));
-
-            if (taginfo.IndexName != null)
+            i = Converters.FindIndex(x => x.Group == group && x.Index == null);
+            if (i != -1)
             {
-                converters = converters
-                    .Where(x => (x.IndexName == null && x.IndexValue == null) || x.IndexName == taginfo.IndexName)
-                    .OrderBy(x => x.IndexName == null);
-            }
-            else if (taginfo.IndexValue != null)
-            {
-                converters = converters
-                    .Where(x => (x.IndexName == null && x.IndexValue == null) || x.IndexValue == taginfo.IndexValue)
-                    .OrderBy(x => x.IndexValue == null);
-            }
-            else
-            {
-                converters = converters
-                    .Where(x => x.IndexValue == null);
+                return Converters[i];
             }
 
-            return converters.ToArray();
+            return null;
         }
 
-        private TagInfo GetTagInfo(string? groupName, string? indexName)
+        private TagConverter? GetConverter(string name)
         {
-            byte? groupValue = null;
-            byte? indexValue = null;
-
-            if (groupName!.StartsWith("0x"))
+            var i = Converters.FindIndex(x => x.Name == name);
+            if (i != -1)
             {
-                groupValue = Convert.ToByte(groupName, 16);
-                groupName = null;
-            }
-            else
-            {
-                var i = GroupNames.FindIndex(x => x.Name == groupName);
-                if (i != -1)
-                {
-                    groupValue = GroupNames[i].Group;
-                }
+                return Converters[i];
             }
 
-            if (indexName!.StartsWith("0x"))
-            {
-                indexValue = Convert.ToByte(indexName, 16);
-                indexName = null;
-            }
-
-            if (groupValue.HasValue)
-            {
-                var i = IndexNames.FindIndex(x => x.Group == groupValue && x.Name == indexName);
-                if (i != -1)
-                {
-                    indexValue = IndexNames[i].Index;
-                }
-            }
-
-            return new TagInfo(groupValue, groupName, indexValue, indexName);
+            return null;
         }
 
-        private TagInfo GetTagInfo(byte groupValue, byte indexValue)
-        {
-            string? groupName = null;
-            string? indexName = null;
-
-            {
-                var i = GroupNames.FindIndex(x => x.Group == groupValue);
-                if (i != -1)
-                {
-                    groupName = GroupNames[i].Name;
-                }
-            }
-
-            {
-                var i = IndexNames.FindIndex(x => x.Group == groupValue && x.Index == indexValue);
-                if (i != -1)
-                {
-                    indexName = IndexNames[i].Name;
-                }
-            }
-
-            return new TagInfo(groupValue, groupName, indexValue, indexName);
-        }
     }
 }

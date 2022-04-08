@@ -4,10 +4,8 @@ namespace GFMSG.GUI
 {
     public partial class MsgForm : Form
     {
-        public MsgFormatter MsgConverter;
+        public MsgFormatter Formatter;
         public CellInfo Cell;
-        //public int LanguageIndex;
-        //public int EntryIndex;
 
         private bool Loaded = false;
         private bool Changed = false;
@@ -21,7 +19,7 @@ namespace GFMSG.GUI
 
         public MsgForm(CellInfo cell, MsgFormatter con) : this()
         {
-            MsgConverter = con;
+            Formatter = con;
             Cell = cell;
 
             txtIndex.Text = cell.Row.ToString();
@@ -38,21 +36,30 @@ namespace GFMSG.GUI
 
             if (cell.Entry.HasText)
             {
-                txtMarkup.Text = con.Format(cell.Sequence, new StringOptions(StringFormat.Markup, cell.LanguageCode));
+                txtMarkup.Text = con.Format(cell.Sequence, new StringOptions(StringFormat.Markup, cell.Language));
 
-                new[] { radGender0, radGender1, radGender2, radGender3 }[(ushort)cell.Sequence.Grammatical.Gender].Checked = true;
-                new[] { radInitialSound0, radInitialSound1, radInitialSound2, radInitialSound3 }[(ushort)cell.Sequence.Grammatical.InitialSound].Checked = true;
-
-                chkIsUncountable.Checked = cell.Sequence.Grammatical.IsUncountable;
-                chkIsAlwaysPlural.Checked = cell.Sequence.Grammatical.IsAlwaysPlural;
-                nudExtraAttribute.Value = cell.Sequence.Grammatical.ExtraAttribute;
-                nudExtraAttribute2.Value = cell.Sequence.Grammatical.ExtraAttribute2;
-
-                var rawText = con.Format(cell.Sequence, new StringOptions(StringFormat.Raw, cell.LanguageCode));
-                var convertedRawText = con.Format(GetNewSequence(), new StringOptions(StringFormat.Raw, cell.LanguageCode));
-                AllowEdit = rawText == convertedRawText;
+                var rawText = con.Format(cell.Sequence, new StringOptions(StringFormat.Raw, cell.Language));
+                //var convertedRawText = con.Format(GetNewSequence(), new StringOptions(StringFormat.Raw, cell.LanguageCode));
+                //AllowEdit = rawText == convertedRawText;
                 txtRaw.Text = rawText;
-                txtLength.Text = string.Format("{0} bytes", cell.Sequence.Symbols.Sum(x => x.Size));
+                txtLength.Text = string.Format("{0} bytes", cell.Sequence.Codes.Length);
+
+                if (cell.Sequence.Grammatical.HasValue)
+                {
+                    new[] { radGender0, radGender1, radGender2, radGender3 }[(ushort)cell.Sequence.Grammatical.Value.Gender].Checked = true;
+                    new[] { radInitialSound0, radInitialSound1, radInitialSound2, radInitialSound3 }[(ushort)cell.Sequence.Grammatical.Value.InitialSound].Checked = true;
+
+                    chkIsUncountable.Checked = cell.Sequence.Grammatical.Value.IsUncountable;
+                    chkIsAlwaysPlural.Checked = cell.Sequence.Grammatical.Value.IsAlwaysPlural;
+                    nudExtraAttribute.Value = cell.Sequence.Grammatical.Value.ExtraAttribute;
+                    nudExtraAttribute2.Value = cell.Sequence.Grammatical.Value.ExtraAttribute2;
+
+                    grpGrammar.Visible = true;
+                }
+                else
+                {
+                    grpGrammar.Visible = false;
+                }
 
                 ApplyChange(false);
             }
@@ -95,8 +102,8 @@ namespace GFMSG.GUI
 
         public SymbolSequence GetNewSequence()
         {
-            var symbols = MsgConverter.MarkupToSymbols(txtMarkup.Text);
-
+            var symbols = Formatter.MarkupToSymbols(txtMarkup.Text, Cell.Language);
+            var codes = Formatter.GetCodes(symbols, false); // !!!
             var gramma = new GrammaticalAttribute()
             {
                 Gender = (GrammaticalGender)Array.FindIndex(new[] { radGender0, radGender1, radGender2, radGender3 }, x => x.Checked),
@@ -106,7 +113,7 @@ namespace GFMSG.GUI
                 ExtraAttribute = (ushort)nudExtraAttribute.Value,
                 ExtraAttribute2 = (ushort)nudExtraAttribute2.Value,
             };
-            return new SymbolSequence(symbols, gramma)
+            return new SymbolSequence(codes, Cell.Language, gramma)
             {
                 Name = txtName.Visible ? txtName.Text : null,
             };
@@ -127,14 +134,14 @@ namespace GFMSG.GUI
                 return;
             }
 
-            var preview = MsgConverter.Format(sc, new StringOptions(StringFormat.Plain, Cell.LanguageCode));
+            var preview = Formatter.Format(sc, new StringOptions(StringFormat.Plain, Cell.Language));
             txtPreview.Text = preview.Replace("\n", "\r\n");
             lblError.Visible = false;
 
             if (overwriteRaw)
             {
-                txtRaw.Text = MsgConverter.Format(sc, new StringOptions(StringFormat.Raw, Cell.LanguageCode));
-                txtLength.Text = string.Format("{0} bytes", sc.Symbols.Sum(x => x.Size));
+                txtRaw.Text = Formatter.Format(sc, new StringOptions(StringFormat.Raw, Cell.Language));
+                txtLength.Text = string.Format("{0} bytes", sc.Codes.Length);
             }
         }
 
@@ -160,6 +167,7 @@ namespace GFMSG.GUI
                     {
                         var sc = GetNewSequence();
                         Cell.Entry.Name = sc.Name;
+                        Cell.Entry.Hash = FnvHash.Fnv1a_64(sc.Name);
                         Cell.Entry.Sequences[Cell.Index] = sc;
                         Cell.Entry.Changed = true;
                     }

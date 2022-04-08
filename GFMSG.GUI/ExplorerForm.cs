@@ -9,6 +9,7 @@ namespace GFMSG.GUI
         public MsgWrapper? CurrentWrapper;
         public string DirectoryPath { get; set; }
         public StringOptions CurrentStringOptions { get; set; }
+        public FileVersion Version { get; set; }
 
         public List<MsgWrapper> CachedWrappers;
         public MultilingualWrapper[] MultilingualWrappers;
@@ -17,7 +18,6 @@ namespace GFMSG.GUI
         {
             InitializeComponent();
 
-            Formatter = new PokemonMsgFormatter();
             CachedWrappers = new();
             splitContainer1.Panel1Collapsed = true;
             cmbSearchType.SelectedItem = "Markup";
@@ -56,10 +56,32 @@ namespace GFMSG.GUI
             });
         }
 
-        public ExplorerForm(MultilingualCollection collection) : this()
+        public ExplorerForm(FileVersion version, bool allowOpen) : this()
+        {
+            Version = version;
+            tsslVersion.Text = version.ToString();
+
+            tsmiNew.Visible = allowOpen;
+            tsmiOpen.Visible = allowOpen;
+            tsmiOpenFolder.Visible = allowOpen;
+            tsmiOpenMessage.Visible = allowOpen;
+            tsmiSave.Visible = allowOpen;
+            tsmiSaveAs.Visible = allowOpen;
+            tsmiSaveAll.Visible = allowOpen;
+
+        }
+
+        public ExplorerForm(MultilingualCollection collection) : this(FileVersion.GenVIII, true)
         {
             LoadMessage(collection);
-            DisableOpen();
+        }
+
+        public void LoadMessage(MsgWrapper[] wrappers, MsgFormatter formatter)
+        {
+            Formatter = formatter;
+            OpenFolder(wrappers);
+
+            cmbMultilingual.Visible = false;
         }
 
         public void LoadMessage(MultilingualCollection collection)
@@ -77,30 +99,20 @@ namespace GFMSG.GUI
             cmbMultilingual.Visible = true;
         }
 
-        private void DisableOpen()
-        {
-            tsmiNew.Visible = false;
-            tsmiOpen.Visible = false;
-            tsmiOpenFolder.Visible = false;
-            tsmiOpenMessage.Visible = false;
-            tsmiSave.Visible = false;
-            tsmiSaveAs.Visible = false;
-            tsmiSaveAll.Visible = false;
-        }
-
-        private void OpenFile(string path)
+        private void OpenFile(string path, string[] langcodes)
         {
             CachedWrappers.Clear();
 
             treeView1.Nodes.Clear();
             splitContainer1.Panel1Collapsed = true;
 
-            var wrapper = MsgWrapper.OpenFile(path);
+            var wrapper = MsgWrapper.OpenFile(path, Version);
+            wrapper.LanguageCodes = langcodes;
             CachedWrappers.Add(wrapper);
             ShowWrapper(wrapper);
         }
 
-        private void OpenFolder(string path)
+        private void OpenFolder(string path, string[] langcodes)
         {
             DirectoryPath = path;
             CachedWrappers.Clear();
@@ -123,7 +135,10 @@ namespace GFMSG.GUI
                     parent = parent[folderParts[i]].Nodes;
                 }
 
-                var wrapper = new MsgWrapper(filepath);
+                var wrapper = new MsgWrapper(filepath, Version)
+                {
+                    LanguageCodes = langcodes,
+                };
                 CachedWrappers.Add(wrapper);
 
                 var node = parent.Add(folderParts[^1], Path.GetFileNameWithoutExtension(folderParts[^1]));
@@ -183,6 +198,46 @@ namespace GFMSG.GUI
             splitContainer1.Panel1Collapsed = false;
         }
 
+        private void OpenFolder(MsgWrapper[] wrappers)
+        {
+            CachedWrappers.Clear();
+
+            treeView1.BeginUpdate();
+            treeView1.Nodes.Clear();
+
+            foreach (var wrapper in wrappers)
+            {
+                var parent = treeView1.Nodes;
+                var name = wrapper.Name;
+                if (name.Contains('\\'))
+                {
+                    var folderParts = name.Split("\\");
+                    for (var i = 0; i < folderParts.Length - 1; i++)
+                    {
+                        if (!parent.ContainsKey(folderParts[i]))
+                        {
+                            parent.Add(folderParts[i], folderParts[i]);
+                        }
+                        parent = parent[folderParts[i]].Nodes;
+                    }
+                    name = folderParts[^1];
+                }
+                var node = parent.Add(name, name);
+                node.Tag = wrapper;
+                CachedWrappers.Add(wrapper);
+            }
+
+            if (treeView1.Nodes.Count > 0)
+            {
+                treeView1.ExpandAll();
+                treeView1.SelectedNode = treeView1.Nodes[0];
+            }
+
+            treeView1.EndUpdate();
+
+            splitContainer1.Panel1Collapsed = false;
+        }
+
         private void ChangeOptions(StringOptions options)
         {
             CurrentStringOptions = options;
@@ -199,24 +254,21 @@ namespace GFMSG.GUI
             lstContent.BeginUpdate();
             lstContent.Clear();
             lstContent.Columns.Add("index", "Index");
-            if (msg.HasNameTable)
+            if (msg.Version == FileVersion.GenVIII)
             {
                 lstContent.Columns.Add($"id", $"Id");
             }
-            for (var iTable = 0; iTable < msg.LanguageNumber; iTable++)
+            for (var iLang = 0; iLang < msg.LanguageCount; iLang++)
             {
-                lstContent.Columns.Add($"table_{iTable}", $"Table {iTable + 1}", -2);
+                var langcode = msg.GetLanguageCodes(iLang);
+                lstContent.Columns.Add($"lang_{langcode}", langcode, -2);
             }
 
-            var options = CurrentStringOptions with
-            {
-                LanguageCode = msg.LanguageCode,
-            };
 
             for (var iEntry = 0; iEntry < msg.Entries.Count; iEntry++)
             {
                 var row = lstContent.Items.Add($"{iEntry}");
-                if (msg.HasNameTable)
+                if (msg.Version == FileVersion.GenVIII)
                 {
                     var subitem = row.SubItems.Add(msg.Entries[iEntry].Name ?? "");
                     subitem.Name = $"id";
@@ -225,38 +277,44 @@ namespace GFMSG.GUI
                         Entry = msg[iEntry],
                         Index = 0,
                         Row = iEntry,
-                        LanguageCode = msg.LanguageCode,
+                        Language = msg.GetLanguageCodes(0),
                     };
                 }
-                for (var iTable = 0; iTable < msg.LanguageNumber; iTable++)
+                for (var iLang = 0; iLang < msg.LanguageCount; iLang++)
                 {
+                    var langcode = msg.GetLanguageCodes(iLang);
+                    var options = CurrentStringOptions with
+                    {
+                        LanguageCode = langcode,
+                    };
+
                     if (msg[iEntry].HasText)
                     {
-                        var symbols = msg[iEntry][iTable];
+                        var symbols = msg[iEntry][iLang];
                         var text = Formatter.Format(symbols, options);
                         var subitem = row.SubItems.Add(text);
-                        subitem.Name = $"table_{iTable}";
-                        subitem.Tag = iTable;
+                        subitem.Name = $"table_{iLang}";
+                        subitem.Tag = iLang;
                         subitem.Tag = new CellInfo()
                         {
                             Entry = msg[iEntry],
-                            Index = iTable,
+                            Index = iLang,
                             Row = iEntry,
-                            LanguageCode = msg.LanguageCode,
+                            Language = langcode,
                         };
                     }
                 }
             }
 
             lstContent.Columns["index"].Width = -2;
-            if (msg.HasNameTable)
+            if (msg.Version == FileVersion.GenVIII)
             {
                 lstContent.Columns["id"].Width = -1;
             }
 
             lstContent.EndUpdate();
 
-            tsslTableCount.Text = string.Format("Tables: {0}", msg.LanguageNumber);
+            tsslTableCount.Text = string.Format("Tables: {0}", msg.LanguageCount);
             tsslEntryCount.Text = string.Format("Entries: {0}", msg.Entries.Count);
         }
 
@@ -270,16 +328,16 @@ namespace GFMSG.GUI
             lstContent.BeginUpdate();
             lstContent.Clear();
             lstContent.Columns.Add("index", "Index");
-            if (firstWrapper.HasNameTable)
+            if (firstWrapper.Version == FileVersion.GenVIII)
             {
                 lstContent.Columns.Add($"id", $"Id");
             }
-            foreach (var (langcode, wrapper) in multimsg.Wrappers)
+            foreach (var (key, wrapper) in multimsg.Wrappers)
             {
-                for (var iTable = 0; iTable < wrapper.LanguageNumber; iTable++)
+                for (var iLang = 0; iLang < wrapper.LanguageCount; iLang++)
                 {
-                    var colName = wrapper.LanguageNumber == 1 ? $"{langcode}" : $"{langcode}[{iTable}]";
-                    lstContent.Columns.Add($"table_{langcode}_{iTable}", colName);
+                    var langcode = wrapper.GetLanguageCodes(iLang);
+                    lstContent.Columns.Add($"lang_{langcode}", langcode);
                 }
             }
 
@@ -287,7 +345,7 @@ namespace GFMSG.GUI
             {
                 var row = lstContent.Items.Add($"{iEntry}");
 
-                if (firstWrapper.HasNameTable)
+                if (firstWrapper.Version == FileVersion.GenVIII)
                 {
                     var subitem = row.SubItems.Add(firstWrapper.Entries[iEntry].Name ?? "");
                     subitem.Name = $"id";
@@ -296,23 +354,24 @@ namespace GFMSG.GUI
                         Entry = firstWrapper.Entries[iEntry],
                         Index = 0,
                         Row = iEntry,
-                        LanguageCode = firstWrapper.LanguageCode,
+                        Language = firstWrapper.GetLanguageCodes(0),
                     };
                 }
 
-                foreach (var (langcode, wrapper) in multimsg.Wrappers)
+                foreach (var (groupname, wrapper) in multimsg.Wrappers)
                 {
                     try
                     {
                         if (wrapper.Entries[iEntry].HasText)
                         {
-                            var options = CurrentStringOptions with
-                            {
-                                LanguageCode = langcode,
-                            };
-                            for (var iTable = 0; iTable < wrapper.LanguageNumber; iTable++)
+                            for (var iTable = 0; iTable < wrapper.LanguageCount; iTable++)
                             {
                                 var symbols = wrapper.Entries[iEntry][iTable];
+                                var langcode = wrapper.GetLanguageCodes(iTable);
+                                var options = CurrentStringOptions with
+                                {
+                                    LanguageCode = langcode,
+                                };
                                 var text = Formatter.Format(symbols, options);
                                 var subitem = row.SubItems.Add(text);
                                 subitem.Tag = new CellInfo()
@@ -320,27 +379,27 @@ namespace GFMSG.GUI
                                     Entry = wrapper.Entries[iEntry],
                                     Row = iEntry,
                                     Index = iTable,
-                                    LanguageCode = langcode,
+                                    Language = langcode,
                                 };
                             }
                         }
                     }
                     catch
                     {
-                        MessageBox.Show($"An error occurred on file \"{wrapper.Name}\"({langcode}).");
+                        MessageBox.Show($"An error occurred on file \"{wrapper.Name}\".");
                     }
                 }
             }
 
             lstContent.Columns["index"].Width = -2;
-            if (firstWrapper.HasNameTable)
+            if (firstWrapper.Version == FileVersion.GenVIII)
             {
                 lstContent.Columns["id"].Width = -1;
             }
 
             lstContent.EndUpdate();
 
-            tsslTableCount.Text = string.Format("Tables: {0}", firstWrapper.LanguageNumber);
+            tsslTableCount.Text = string.Format("Tables: {0}", firstWrapper.LanguageCount);
             tsslEntryCount.Text = string.Format("Entries: {0}", firstWrapper.Entries.Count);
         }
 
@@ -370,7 +429,7 @@ namespace GFMSG.GUI
                         {
                             var options = CurrentStringOptions with
                             {
-                                LanguageCode = cell.LanguageCode,
+                                LanguageCode = cell.Language,
                             };
                             var text = Formatter.Format(cell.Sequence, options);
                             subitem.Text = text;
@@ -396,7 +455,7 @@ namespace GFMSG.GUI
             RefreshRow(row);
         }
 
-        private void Search(Func<MsgWrapper.Entry, string?> action)
+        private void Search(Func<SymbolSequence, string?> action)
         {
             lstSearch.BeginUpdate();
             lstSearch.Items.Clear();
@@ -404,16 +463,19 @@ namespace GFMSG.GUI
 
             foreach (var wrapper in CachedWrappers)
             {
-                if (!string.IsNullOrEmpty(searchLang) && wrapper.LanguageCode != searchLang) continue;
+                if (!string.IsNullOrEmpty(searchLang) && wrapper.Group != searchLang) continue;
                 wrapper.Load();
                 for (var iEntry = 0; iEntry < wrapper.Entries.Count; iEntry++)
                 {
-                    string? result = action(wrapper[iEntry]);
-                    if (result != null)
+                    foreach(var seq in wrapper.Entries[iEntry])
                     {
-                        var row = lstSearch.Items.Add(result);
-                        row.SubItems.Add(wrapper.Name);
-                        row.Tag = (wrapper, iEntry);
+                        string? result = action(seq);
+                        if (result != null)
+                        {
+                            var row = lstSearch.Items.Add(result);
+                            row.SubItems.Add(wrapper.Name);
+                            row.Tag = (wrapper, iEntry);
+                        }
                     }
                 }
             }
@@ -499,13 +561,38 @@ namespace GFMSG.GUI
             }
         }
 
+        private (MsgFormatter?, string?) ChooseFormatter(bool haslang)
+        {
+            using var frm = new ChooseFormatterForm(Version, haslang);
+            if (frm.ShowDialog(this) != DialogResult.OK) return (null, null);
+
+            MsgFormatter formatter = Activator.CreateInstance(frm.GetSelectedType())! switch
+            {
+                DpMsgFormatter v1 => v1,
+                PokemonMsgFormatterV2 v2 => v2,
+                _ => throw new NotSupportedException(),
+            };
+
+            string? lang = null;
+            if (haslang)
+            {
+                lang = frm.GetSelectedLanguage();
+            }
+
+            return (formatter, lang);
+        }
+
         private void tsmiOpenFolder_Click(object sender, EventArgs e)
         {
             if (!CheckDiscard()) return;
 
             if (folderBrowserDialog1.ShowDialog(this) != DialogResult.OK) return;
 
-            OpenFolder(folderBrowserDialog1.SelectedPath);
+            var (formatter, lang) = ChooseFormatter(true);
+            if (formatter == null) return;
+            Formatter = formatter;
+
+            OpenFolder(folderBrowserDialog1.SelectedPath, new[] { lang! });
         }
 
         private void listView1_DoubleClick(object sender, EventArgs e)
@@ -540,10 +627,10 @@ namespace GFMSG.GUI
             if (cmbSearchType.Text == "Name")
             {
                 var keyword = txtSearch.Text;
-                Search(entry => {
-                    if (entry.Name != null && entry.Name.Contains(keyword))
+                Search(seq => {
+                    if (seq.Name != null && seq.Name.Contains(keyword))
                     {
-                        return entry.Name;
+                        return seq.Name;
                     }
                     return null;
                 });
@@ -560,17 +647,13 @@ namespace GFMSG.GUI
                         "Plain" => StringFormat.Plain,
                         "Html" => StringFormat.Html,
                         _ => throw new NotSupportedException(),
-                    }
+                    },
                 };
-                Search(entry => {
-                    if (entry.Sequences == null) return null;
-                    foreach (var seq in entry)
+                Search(seq => {
+                    var text = Formatter.Format(seq, fo with { LanguageCode = seq.Language });
+                    if (keywords.All(x => text.Contains(x)))
                     {
-                        var text = Formatter.Format(seq, fo);
-                        if (keywords.All(x => text.Contains(x)))
-                        {
-                            return text;
-                        }
+                        return text;
                     }
                     return null;
                 });
@@ -611,7 +694,11 @@ namespace GFMSG.GUI
 
             if (openFileDialog1.ShowDialog(this) != DialogResult.OK) return;
 
-            OpenFile(openFileDialog1.FileName);
+            var (formatter, lang) = ChooseFormatter(true);
+            if (formatter == null) return;
+            Formatter = formatter;
+
+            OpenFile(openFileDialog1.FileName, new[] { lang! });
         }
 
         private void tsmiNew_Click(object sender, EventArgs e)
@@ -619,8 +706,14 @@ namespace GFMSG.GUI
             if (!CheckDiscard()) return;
 
             if (saveFileDialog1.ShowDialog(this) != DialogResult.OK) return;
-            var mw = MsgWrapper.CreateFile(saveFileDialog1.FileName, true);
-            OpenFile(saveFileDialog1.FileName);
+
+            var (formatter, lang) = ChooseFormatter(true);
+            if (formatter == null) return;
+            Formatter = formatter;
+
+            MsgWrapper.CreateFile(saveFileDialog1.FileName, Version);
+
+            OpenFile(saveFileDialog1.FileName, new[] { lang! });
         }
 
         private void tsmiExit_Click(object sender, EventArgs e)
@@ -675,32 +768,30 @@ namespace GFMSG.GUI
             var counters = new Dictionary<ushort, int>();
             var map = Formatter.Chars.PlainMap;
 
-            Search(entry => {
-                if (entry.Sequences == null) return null;
-                foreach (var seq in entry)
+            Search(seq => {
+                fo.LanguageCode = seq.Language;
+                var ss = Formatter.GetSymbols(seq);
+                if (ss.Any(x =>
                 {
-                    if (seq.Symbols.Any(x =>
+                    if (x is CharSymbol y && y.IsPrivate)
                     {
-                        if (x is CharSymbol y && y.IsPrivate)
+                        if (counters.ContainsKey(y.Code))
                         {
-                            if (counters.ContainsKey(y.Code))
-                            {
-                                counters[y.Code]++;
-                            }
-                            else
-                            {
-                                counters.Add(y.Code, 1);
-                            }
-                            return !map.ContainsKey(y.Code);
+                            counters[y.Code]++;
                         }
                         else
                         {
-                            return false;
+                            counters.Add(y.Code, 1);
                         }
-                    }))
-                    {
-                        return Formatter.Format(seq, fo);
+                        return !map.ContainsKey(y.Code);
                     }
+                    else
+                    {
+                        return false;
+                    }
+                }))
+                {
+                    return Formatter.Format(seq, fo);
                 }
                 return null;
             });
@@ -731,29 +822,27 @@ namespace GFMSG.GUI
 
             var counters = new Dictionary<ushort, int>();
 
-            Search(entry => {
-                if (entry.Sequences == null) return null;
-                foreach (var seq in entry)
+            Search(seq => {
+                fo.LanguageCode = seq.Language;
+                var ss = Formatter.GetSymbols(seq);
+                foreach (var x in ss)
                 {
-                    foreach(var x in seq.Symbols)
+                    if (x is TagSymbol y)
                     {
-                        if (x is TagSymbol y)
+                        if (counters.ContainsKey(y.Code))
                         {
-                            if (counters.ContainsKey(y.Code))
-                            {
-                                counters[y.Code]++;
-                            }
-                            else
-                            {
-                                counters.Add(y.Code, 1);
-                            }
+                            counters[y.Code]++;
+                        }
+                        else
+                        {
+                            counters.Add(y.Code, 1);
                         }
                     }
                 }
                 return null;
             });
 
-            var map = Formatter.Tags.IndexNames;
+            var map = Formatter.Tags.Converters;
             var sb = new StringBuilder();
             foreach (var (code, count) in counters.OrderBy(x => x.Key))
             {
@@ -769,26 +858,63 @@ namespace GFMSG.GUI
 
             if (folderBrowserDialog1.ShowDialog(this) != DialogResult.OK) return;
 
-            using var frm = new ChooseFormatterForm();
-            if (frm.ShowDialog(this) != DialogResult.OK) return;
-
-            var formatter = (PokemonMsgFormatter)Activator.CreateInstance(frm.GetSelectedType())!;
+            var (formatter, _) = ChooseFormatter(false);
+            if (formatter == null) return;
 
             var path = folderBrowserDialog1.SelectedPath;
             var mc = new MultilingualCollection();
-            mc.Formatter = formatter;
-            foreach (var (langcode, foldername) in formatter.LanguageMap)
+            Dictionary<string, string[]> langmap;
+            if (formatter is DpMsgFormatter v1)
             {
-                var langpath = Path.Combine(path, foldername);
-                if(!Directory.Exists(langpath)) continue;
-                var files = Directory.GetFiles(langpath, "*.dat", SearchOption.AllDirectories);
-                if (files.Length == 0) continue;
-                var wrappers = files.Select(x => new MsgWrapper(x)
+                mc.Formatter = v1;
+                langmap = new Dictionary<string, string[]>()
                 {
-                    LanguageCode = langcode,
-                    Name = x.Replace(langpath + "\\", "").Replace(".dat", "")
-                }).ToArray();
-                mc.Wrappers.Add(langcode, wrappers);
+                    ["jpn"] = new[] { "ja-Hrkt" },
+                    ["usa"] = new[] { "en-US" },
+                    ["fra"] = new[] { "fr" },
+                    ["ita"] = new[] { "it" },
+                    ["ger"] = new[] { "de" },
+                    ["spa"] = new[] { "es" },
+                    ["kor"] = new[] { "ko" },
+                };
+            }
+            else if (formatter is PokemonMsgFormatterV2 v2)
+            {
+                mc.Formatter = v2;
+                langmap = new Dictionary<string, string[]>()
+                {
+                    ["JPN"] = new[] { "ja-Hrkt" },
+                    ["JPN_KANJI"] = new[] { "ja-Jpan" },
+                    ["English"] = new[] { "en-US" },
+                    ["French"] = new[] { "fr" },
+                    ["Italian"] = new[] { "it" },
+                    ["German"] = new[] { "de" },
+                    ["Spanish"] = new[] { "es" },
+                    ["Korean"] = new[] { "ko" },
+                    ["Simp_Chinese"] = new[] { "zh-Hans" },
+                    ["Trad_Chinese"] = new[] { "zh-Hant" },
+                };
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+            foreach (var (foldername, langcodes) in langmap)
+            {
+                foreach(var langcode in langcodes)
+                {
+                    var langpath = Path.Combine(path, foldername);
+                    if (!Directory.Exists(langpath)) continue;
+                    var files = Directory.GetFiles(langpath, "*.dat", SearchOption.AllDirectories);
+                    if (files.Length == 0) continue;
+                    var wrappers = files.Select(x => new MsgWrapper(x, Version)
+                    {
+                        Group = foldername,
+                        LanguageCodes = new[] { langcode },
+                        Name = x.Replace(langpath + "\\", "").Replace(".dat", "")
+                    }).ToArray();
+                    mc.Wrappers.Add(foldername, wrappers);
+                }
             }
 
             if (mc.Wrappers.Count == 0) return;
@@ -802,7 +928,6 @@ namespace GFMSG.GUI
             {
                 Save(mw);
             }
-
         }
 
         private void testSaveAllToolStripMenuItem_Click(object sender, EventArgs e)
@@ -847,6 +972,44 @@ namespace GFMSG.GUI
             using var frm = new StringOptionsForm(CurrentStringOptions);
             if (frm.ShowDialog(this) != DialogResult.OK) return;
             ChangeOptions(frm.GetValue());
+        }
+
+        private void analyzeLettersToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var counters = new Dictionary<ushort, Dictionary<string, int>>();
+
+            Search(seq => {
+                var ss = Formatter.GetSymbols(seq);
+                foreach(var s in ss)
+                {
+                    if (s is LetterSymbol ls)
+                    {
+                        if (!counters.ContainsKey(ls.Code))
+                        {
+                            counters.Add(ls.Code, new());
+                        }
+                        if (!counters[ls.Code].ContainsKey(seq.Language))
+                        {
+                            counters[ls.Code].Add(seq.Language, 1);
+                        }
+                        else
+                        {
+                            counters[ls.Code][seq.Language]++;
+                        }
+                    }
+                }
+                return null;
+            });
+
+            var sb = new StringBuilder();
+            var keys = counters.SelectMany(x => x.Value.Keys).Distinct().ToArray();
+            sb.AppendLine($"code\t{string.Join('\t', keys)}");
+            foreach (var kv in counters.OrderBy(x => x.Key))
+            {
+                var cnt = string.Join('\t', keys.Select(x => kv.Value.ContainsKey(x) ? kv.Value[x] : 0));
+                sb.AppendLine($"0x{kv.Key:X4}\t{cnt}");
+            }
+            TextDialog.Show(sb.ToString());
         }
     }
 }

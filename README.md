@@ -6,15 +6,28 @@ A library for reading pokemon text format, with GUI.
 <img src="https://user-images.githubusercontent.com/38492315/156161325-31ab49fe-8bd6-4b03-a642-7aa364ebec4c.png" width="320px" />
 
 ## Usage
+### Load
+#### GenIV
 ``` csharp
-var wrapper = new MsgWrapper("filename.dat");
-wrapper.Load();
+var msgdata = new MsgDataV1("filename.dat");
+var wrapper = new MsgWrapper(msgdata, "filename", "ja-Hrkt");
 ```
 
+#### GenV-GenVII
 ``` csharp
-var msgdata = new MsgData("filename.dat");
+var msgdata = new MsgDataV2("filename.dat");
+var langcodes = new[] { "ja-Hrkt", "ja-Jpan" };
+var version = FileVersion.GenV; // GenV, GenVI, GenVII
+var wrapper = new MsgWrapper(msgdata, "filename", version, langcodes);
+```
+
+#### GenVIII
+``` csharp
+var msgdata = new MsgDataV2("filename.dat");
 var ahtb = new AHTB("filename.tbl");
-var wrapper = new MsgWrapper(msgdata, ahtb);
+var langcodes = new[] { "ja-Hrkt" };
+var version = FileVersion.GenVIII;
+var wrapper = new MsgWrapper(msgdata, ahtb, "filename", FileVersion.GenVIII, langcodes);
 ```
 
 ### Format
@@ -22,31 +35,31 @@ var wrapper = new MsgWrapper(msgdata, ahtb);
 var formatter = new MsgFormatter();
 var options = new StringOptions() {
     Format = StringFormat.Plain,
-    LanguageCode = "ja-Jpan",
+    LanguageCode = "ja-Hrkt",
+    RemoveLineBreaks = false,
 };
 
 int entryIndex = 0;
-string text = formatter.Format(wrapper[entryIndex][0], options);
+int langIndex = 0;
+string text = formatter.Format(wrapper[entryIndex][langIndex], options);
 ```
 
 ## Configurations
 ``` csharp
 var formatter = new MsgFormatter();
 
-// add tag info
-formatter.AddTagGroup(0x01, "WORD");
-formatter.AddTagIndex(0x01, 0x00, "TRAINER_NAME");
-
-formatter.AddTagGroup(0xBE, "STREAM_CTRL");
-formatter.AddTagIndex(0xBE, 0x00, "LINE_FEED");
-
 // add tag converter
-formatter.AddConverter(new TagConverter("STREAM_CTRL", "LINE_FEED", StringFormat.Plain | StringFormat.Html)
+formatter.AddConverter(new TagConverter(0xBE, 0x00, "LINE_FEED", StringFormat.Plain | StringFormat.Html)
 {
     ToText = () => "\n";
 });
 
-// add char
+// add letter(GenIV)
+formatter.AddLetter("ja", new(0x0003, "あ"));
+formatter.AddLetter("ko", new(0x0401, "가"));
+formatter.AddLetter("", new(0xE000, "[LINE_FEED]", "\n"));
+
+// add char(GenV+)
 formatter.AddChar(0xE300, "$", StringFormat.Plain | StringFormat.Html);
 
 // add char converter
@@ -61,15 +74,15 @@ formatter.AddConverter(new CharConverter(0xE301, 0xE329, StringFormat.Html | Str
 | Format | Output |
 | ---- | ---- |
 | Raw | `{TAG_01_00:0x0000} sent out {TAG_01_02:0x0001}!` |
-| Markup | `{WORD:TRAINER_NAME:0x0000} sent out {WORD:POKE_NICKNAME:0x0001}!` |
-| Plain | `<TRAINER_NAME> sent out <POKE_NICKNAME>!` |
-| Html | `<var>TRAINER_NAME</var> sent out <var>POKE_NICKNAME</var>!` |
+| Markup | `{TRAINER_NAME:0x0000} sent out {POKE_NICKNAME:0x0001}!` |
+| Plain | `<trainer_name> sent out <poke_nickname>!` |
+| Html | `<var>trainer_name</var> sent out <var>poke_nickname</var>!` |
 
 ### Format tags
 | Format | Output |
 | ----  | ---- |
 | Raw | `Are you alive, my {TAG_11_00:0x00FF,0x0403}boygirl?!` |
-| Markup | `Are you alive, my {STRING_SELECT:BY_GENDER:255,boy,girl}?!` |
+| Markup | `Are you alive, my {BY_GENDER:255,boy,girl}?!` |
 | Plain | `Are you alive, my boy/girl?!` |
 
 ### Format characters

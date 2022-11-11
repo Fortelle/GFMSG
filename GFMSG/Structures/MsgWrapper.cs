@@ -53,6 +53,21 @@ namespace GFMSG
             Load(msg, null);
         }
 
+        public MsgWrapper(MsgDataV2 msg, AHTB ahtb, string name, FileVersion version, string[] langcodes) : this()
+        {
+            Name = name;
+            LanguageCodes = langcodes;
+            Version = version;
+            Load(msg, ahtb);
+        }
+
+        public MsgWrapper(AHTB ahtb, string name, FileVersion version) : this()
+        {
+            Name = name;
+            Version = version;
+            Load(ahtb);
+        }
+
         public static MsgWrapper CreateFile(string path, FileVersion version)
         {
             var mw = new MsgWrapper(path, version)
@@ -184,6 +199,17 @@ namespace GFMSG
                     Entries.Add(entry);
                 }
             }
+
+            Loaded = true;
+        }
+
+        public void Load(AHTB ahtb)
+        {
+            LanguageCount = 0;
+            NullFill = true;
+
+            var entries = ahtb.Entries.Select(x => new Entry(x.Text, x.Hash));
+            Entries.AddRange(entries);
 
             Loaded = true;
         }

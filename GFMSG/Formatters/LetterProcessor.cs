@@ -88,5 +88,12 @@
             MarkupText = markupText;
             PlainText = plainText;
         }
+
+        public LetterInfo(ushort code, string text)
+        {
+            Code = code;
+            MarkupText = text;
+            PlainText = text;
+        }
     }
 }

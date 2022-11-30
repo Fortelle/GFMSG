@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 
 namespace GFMSG
 {
@@ -91,7 +86,8 @@ namespace GFMSG
             var wrappers = GetWrappers(langcode);
             var wrapper = wrappers.First(x => x.Name == filename);
             wrapper.Load();
-            var entry = wrapper[index];
+            var entry = wrapper.TryGetEntry(index);
+            if (entry == null) return "";
             var options = new StringOptions(StringFormat.Plain, langcode);
             return Formatter.Format(entry[0], options);
         }
@@ -101,7 +97,8 @@ namespace GFMSG
             var wrappers = GetWrappers(langcode);
             var wrapper = wrappers.First(x => x.Name == filename);
             wrapper.Load();
-            var entry = wrapper[name];
+            var entry = wrapper.TryGetEntry(name);
+            if (entry == null) return "";
             var options = new StringOptions(StringFormat.Plain, langcode);
             return Formatter.Format(entry[0], options);
         }
@@ -111,7 +108,8 @@ namespace GFMSG
             var wrappers = GetWrappers(langcode);
             var wrapper = wrappers.First(x => x.Name == filename);
             wrapper.Load();
-            var entry = wrapper[hash];
+            var entry = wrapper.TryGetEntry(hash);
+            if (entry == null) return "";
             var options = new StringOptions(StringFormat.Plain, langcode);
             return Formatter.Format(entry[0], options);
         }

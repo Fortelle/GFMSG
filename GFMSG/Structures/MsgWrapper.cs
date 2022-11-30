@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Security.Policy;
 
 namespace GFMSG
 {
@@ -390,6 +391,38 @@ namespace GFMSG
         public Entry this[int index]
         {
             get => Entries[index];
+        }
+
+        public Entry? TryGetEntry(string name)
+        {
+            var index = Entries.FindIndex(x => x.Name == name);
+            if (index == -1)
+            {
+                return null;
+            }
+
+            return Entries[index];
+        }
+
+        public Entry? TryGetEntry(ulong hash)
+        {
+            var index = Entries.FindIndex(x => x.Hash == hash);
+            if (index == -1)
+            {
+                return null;
+            }
+
+            return Entries[index];
+        }
+
+        public Entry? TryGetEntry(int index)
+        {
+            if (index >= Entries.Count)
+            {
+                return null;
+            }
+
+            return Entries[index];
         }
 
         public class Entry : IEnumerable<SymbolSequence>

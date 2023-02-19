@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Security.Policy;
 
 namespace GFMSG
 {
@@ -25,6 +24,8 @@ namespace GFMSG
 
         private ushort V1Seed { get; set; }
         private bool V1Compressed { get; set; }
+
+        public Action<MsgWrapper> LazyLoad { get; set; }
 
         public MsgWrapper()
         {
@@ -69,6 +70,13 @@ namespace GFMSG
             Load(ahtb);
         }
 
+        public MsgWrapper(string name, FileVersion version, string[] langcodes) : this()
+        {
+            Name = name;
+            LanguageCodes = langcodes;
+            Version = version;
+        }
+
         public static MsgWrapper CreateFile(string path, FileVersion version)
         {
             var mw = new MsgWrapper(path, version)
@@ -92,8 +100,10 @@ namespace GFMSG
             if (IsNew) return true;
             if (IsError) return false;
             if (Loaded) return true;
-            if (Filepath == null) return true;
 
+            LazyLoad?.Invoke(this);
+
+            if (Filepath == null) return true;
             try
             {
                 switch (Version)

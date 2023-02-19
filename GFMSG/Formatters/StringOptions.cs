@@ -61,6 +61,11 @@ namespace GFMSG
         {
         }
 
+        public StringOptions(StringFormat format)
+        {
+            Format = format;
+        }
+
         public StringOptions(StringFormat format, string langcode)
         {
             Format = format;

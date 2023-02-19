@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Text;
 
 namespace GFMSG
 {
@@ -34,7 +35,7 @@ namespace GFMSG
             }
         }
 
-        public MultilingualWrapper[] ToWrappers()
+        public MultilingualWrapper[] TransposeWrappers()
         {
             var names = Wrappers.Values.SelectMany(x => x.Select(y => y.Name).ToArray()).Distinct().ToArray();
             var list = new List<MultilingualWrapper>();
@@ -56,10 +57,18 @@ namespace GFMSG
 
         private MsgWrapper[] GetWrappers(string langcode)
         {
-            if (Wrappers.ContainsKey(langcode))
+            if (langcode != null && Wrappers.ContainsKey(langcode))
             {
                 return Wrappers[langcode];
             }
+
+            if (string.IsNullOrEmpty(langcode))
+            {
+                return Wrappers.Count > 0
+                    ? Wrappers.First().Value
+                    : Array.Empty<MsgWrapper>();
+            }
+
             if (langcode.Contains('-'))
             {
                 var prime = langcode.Split('-')[0];
@@ -69,14 +78,16 @@ namespace GFMSG
                 }
                 else
                 {
-                    prime += '-';
-                    string? langcode2 = Wrappers.Keys.FirstOrDefault(x => x.StartsWith(prime));
-                    if (langcode2 != null)
-                    {
-                        return Wrappers[langcode2];
-                    }
+                    langcode = prime;
                 }
             }
+
+            var key = Wrappers.Keys.FirstOrDefault(x => x.StartsWith(langcode + '-'));
+            if (key != null)
+            {
+                return Wrappers[key];
+            }
+
             throw new KeyNotFoundException();
         }
 
@@ -139,6 +150,7 @@ namespace GFMSG
 
         public void Add(string groupname, MsgWrapper wrapper)
         {
+            wrapper.Group = groupname;
             Wrappers.Add(groupname, wrapper);
         }
         

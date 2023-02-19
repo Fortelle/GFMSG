@@ -45,6 +45,7 @@
 
         private LetterInfo? FindLetter(string lang, Predicate<LetterInfo> match)
         {
+            lang ??= "";
             lang = lang.Split('-')[0];
 
             if (lang != "" && !LetterLists.ContainsKey(lang)) {

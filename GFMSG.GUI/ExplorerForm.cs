@@ -86,7 +86,7 @@ namespace GFMSG.GUI
 
         public void LoadMessage(MultilingualCollection collection)
         {
-            var wrappers = collection.ToWrappers();
+            var wrappers = collection.TransposeWrappers();
             Formatter = collection.Formatter;
             OpenFolder(wrappers);
 
@@ -156,19 +156,19 @@ namespace GFMSG.GUI
             splitContainer1.Panel1Collapsed = false;
         }
 
-        private void OpenFolder(MultilingualWrapper[] wrappers)
+        private void OpenFolder(MultilingualWrapper[] mlwrappers)
         {
-            MultilingualWrappers = wrappers;
+            MultilingualWrappers = mlwrappers;
 
             CachedWrappers.Clear();
 
             treeView1.BeginUpdate();
             treeView1.Nodes.Clear();
 
-            foreach (var wrapper in wrappers)
+            foreach (var mlwrapper in mlwrappers)
             {
                 var parent = treeView1.Nodes;
-                var name = wrapper.Name;
+                var name = mlwrapper.Name;
                 if (name.Contains('\\'))
                 {
                     var folderParts = name.Split("\\");
@@ -183,8 +183,8 @@ namespace GFMSG.GUI
                     name = folderParts[^1];
                 }
                 var node = parent.Add(name, name);
-                node.Tag = wrapper;
-                CachedWrappers.AddRange(wrapper.Wrappers.Values);
+                node.Tag = mlwrapper;
+                CachedWrappers.AddRange(mlwrapper.Wrappers.Values);
             }
 
             if (treeView1.Nodes.Count > 0)
@@ -459,14 +459,15 @@ namespace GFMSG.GUI
         {
             lstSearch.BeginUpdate();
             lstSearch.Items.Clear();
-            string? searchLang = cmbMultilingual.SelectedIndex > 0 ? cmbMultilingual.Text : null;
+            string? searchGroup = cmbMultilingual.SelectedIndex > 0 ? cmbMultilingual.Text : null;
 
             foreach (var wrapper in CachedWrappers)
             {
-                if (!string.IsNullOrEmpty(searchLang) && wrapper.Group != searchLang) continue;
+                if (searchGroup != null && searchGroup != wrapper.Group) continue;
                 wrapper.Load();
                 for (var iEntry = 0; iEntry < wrapper.Entries.Count; iEntry++)
                 {
+                    if (!wrapper.Entries[iEntry].HasText) continue;
                     foreach(var seq in wrapper.Entries[iEntry])
                     {
                         string? result = action(seq);
@@ -909,7 +910,6 @@ namespace GFMSG.GUI
                     if (files.Length == 0) continue;
                     var wrappers = files.Select(x => new MsgWrapper(x, Version)
                     {
-                        Group = foldername,
                         LanguageCodes = new[] { langcode },
                         Name = x.Replace(langpath + "\\", "").Replace(".dat", "")
                     }).ToArray();

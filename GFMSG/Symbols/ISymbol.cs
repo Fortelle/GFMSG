@@ -1,10 +1,9 @@
 ﻿using System.Diagnostics;
 
-namespace GFMSG
+namespace GFMSG;
+
+public interface ISymbol
 {
-    public interface ISymbol
-    {
-        public int Size { get; }
-        public string ToString();
-    }
+    public int Size { get; }
+    public string ToString();
 }

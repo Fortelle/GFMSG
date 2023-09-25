@@ -1,8 +1,7 @@
-﻿namespace GFMSG
+﻿namespace GFMSG;
+
+public enum DataCoding : uint
 {
-    public enum DataCoding : uint
-    {
-        Coded = 0,
-        Uncoded = 1,
-    }
+    Coded = 0,
+    Uncoded = 1,
 }

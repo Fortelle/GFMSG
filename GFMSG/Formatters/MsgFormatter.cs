@@ -1,176 +1,175 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace GFMSG
+namespace GFMSG;
+
+public abstract class MsgFormatter
 {
-    public abstract class MsgFormatter
+    protected static readonly Regex RawRegex = new(@"\{TAG_.+?\}|\[0x.+?\]|.");
+    protected static readonly Regex MarkupRegex = new(@"\{[^\{]+?\}|\[[A-Za-z_]+?\]|\\\\|\\u....|\\[0-9a-z]|.");
+
+    public CharProcessor Chars { get; set; } = new();
+    public LetterProcessor Letters { get; set; } = new();
+    public TagProcessor Tags { get; set; } = new();
+
+    protected abstract string[] Process(SymbolSequence symbols, StringOptions options);
+    public abstract ISymbol[] GetSymbols(SymbolSequence sequence);
+    public abstract ushort[] GetCodes(ISymbol[] symbols, bool nullfill);
+    public abstract ISymbol[] MarkupToSymbols(string input, string langcode);
+
+    public Func<RequireArguments, string?> RequireText { get; set; }
+    public FileVersion Version { get; set; }
+
+    protected MsgFormatter(FileVersion version)
     {
-        protected static readonly Regex RawRegex = new(@"\{TAG_.+?\}|\[0x.+?\]|.");
-        protected static readonly Regex MarkupRegex = new(@"\{[^\{]+?\}|\[[A-Za-z_]+?\]|\\\\|\\u....|\\[0-9a-z]|.");
+        Version = version;
+    }
 
-        public CharProcessor Chars { get; set; } = new();
-        public LetterProcessor Letters { get; set; } = new();
-        public TagProcessor Tags { get; set; } = new();
-
-        protected abstract string[] Process(SymbolSequence symbols, StringOptions options);
-        public abstract ISymbol[] GetSymbols(SymbolSequence sequence);
-        public abstract ushort[] GetCodes(ISymbol[] symbols, bool nullfill);
-        public abstract ISymbol[] MarkupToSymbols(string input, string langcode);
-
-        public Func<RequireArguments, string?> RequireText { get; set; }
-        public FileVersion Version { get; set; }
-
-        protected MsgFormatter(FileVersion version)
+    public string Format(SymbolSequence sequence, StringOptions options)
+    {
+        switch (options.Format)
         {
-            Version = version;
+            case StringFormat.Hex8:
+                return string.Join(' ', sequence.Codes.Select(x => $"{x & 0xFF:X2} {x >> 8:X2}"));
+            case StringFormat.Hex16:
+                return string.Join(' ', sequence.Codes.Select(x => $"{x:X4}"));
         }
 
-        public string Format(SymbolSequence sequence, StringOptions options)
+        var list = Process(sequence, options);
+
+        RemoveLineBreaks(list, options);
+
+        return string.Join(string.Empty, list);
+    }
+
+    protected static void RemoveLineBreaks(string[] text, StringOptions options)
+    {
+        if (!options.RemoveLineBreaks)
         {
-            switch (options.Format)
+            if (options.Format == StringFormat.Html)
             {
-                case StringFormat.Hex8:
-                    return string.Join(' ', sequence.Codes.Select(x => $"{x & 0xFF:X2} {x >> 8:X2}"));
-                case StringFormat.Hex16:
-                    return string.Join(' ', sequence.Codes.Select(x => $"{x:X4}"));
-            }
-
-            var list = Process(sequence, options);
-
-            RemoveLineBreaks(list, options);
-
-            return string.Join(string.Empty, list);
-        }
-
-        protected static void RemoveLineBreaks(string[] text, StringOptions options)
-        {
-            if (!options.RemoveLineBreaks)
-            {
-                if (options.Format == StringFormat.Html)
+                for (var i = 0; i < text.Length; i++)
                 {
-                    for (var i = 0; i < text.Length; i++)
+                    if (text[i] == "\n")
                     {
-                        if (text[i] == "\n")
-                        {
-                            text[i] = "<br>";
-                        }
+                        text[i] = "<br>";
                     }
                 }
-                return;
             }
+            return;
+        }
 
-            if(options.Format is not StringFormat.Plain or StringFormat.Html)
+        if(options.Format is not StringFormat.Plain or StringFormat.Html)
+        {
+            return;
+        }
+
+        var linebreakReplacement = options.LanguageCode == null ? " "
+            : options.LanguageCode.StartsWith("ja") && options.JapaneseFullwidthSpace ? "　"
+            : options.LanguageCode.StartsWith("zh") ? ""
+            : " ";
+        char? lastchar = null;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] == "\n")
             {
-                return;
-            }
-
-            var linebreakReplacement = options.LanguageCode == null ? " "
-                : options.LanguageCode.StartsWith("ja") && options.JapaneseFullwidthSpace ? "　"
-                : options.LanguageCode.StartsWith("zh") ? ""
-                : " ";
-            char? lastchar = null;
-
-            for (var i = 0; i < text.Length; i++)
-            {
-                if (text[i] == "\n")
+                bool needSpace = i > 0 && i < text.Length - 1 && lastchar.HasValue;
+                if (needSpace)
                 {
-                    bool needSpace = i > 0 && i < text.Length - 1 && lastchar.HasValue;
-                    if (needSpace)
+                    if (options.LanguageCode?.StartsWith("ja") == true)
                     {
-                        if (options.LanguageCode?.StartsWith("ja") == true)
+                        needSpace &= !char.IsWhiteSpace(lastchar!.Value);
+                        if (options.JapaneseSpaceAfterPunctuation)
                         {
-                            needSpace &= !char.IsWhiteSpace(lastchar!.Value);
-                            if (options.JapaneseSpaceAfterPunctuation)
-                            {
-                                needSpace &= !char.IsPunctuation(lastchar!.Value);
-                            }
-                        }
-                        else if (options.LanguageCode?.StartsWith("zh") == true)
-                        {
-                        }
-                        else
-                        {
-                            needSpace &= !char.IsWhiteSpace(lastchar!.Value);
+                            needSpace &= !char.IsPunctuation(lastchar!.Value);
                         }
                     }
-                    text[i] = needSpace ? linebreakReplacement : string.Empty;
+                    else if (options.LanguageCode?.StartsWith("zh") == true)
+                    {
+                    }
+                    else
+                    {
+                        needSpace &= !char.IsWhiteSpace(lastchar!.Value);
+                    }
                 }
-                if (text[i] != "") lastchar = text[i][^1];
+                text[i] = needSpace ? linebreakReplacement : string.Empty;
+            }
+            if (text[i] != "") lastchar = text[i][^1];
+        }
+    }
+
+    public void AddConverter(TagConverter converter)
+    {
+        Tags.Converters.Add(converter);
+    }
+
+    public void AddConverter(CharConverter converter)
+    {
+        Chars.Converters.Add(converter);
+    }
+
+    public void AddChar(ushort code, string text, StringFormat formats)
+    {
+        foreach(var format in Enum.GetValues<StringFormat>())
+        {
+            if (!formats.HasFlag(format)) continue;
+            switch (format)
+            {
+                case StringFormat.Plain:
+                    Chars.PlainMap.Add(code, text);
+                    break;
+                case StringFormat.Html:
+                    Chars.HtmlMap.Add(code, text);
+                    break;
             }
         }
+    }
 
-        public void AddConverter(TagConverter converter)
-        {
-            Tags.Converters.Add(converter);
-        }
+    public static ISymbol[] RawToSymbols(string input)
+    {
+        var matches = RawRegex.Matches(input).Select(x => x.Value).ToArray();
 
-        public void AddConverter(CharConverter converter)
+        var symbols = new List<ISymbol>();
+        foreach (var s in matches)
         {
-            Chars.Converters.Add(converter);
-        }
-
-        public void AddChar(ushort code, string text, StringFormat formats)
-        {
-            foreach(var format in Enum.GetValues<StringFormat>())
+            if (s.StartsWith("{TAG_"))
             {
-                if (!formats.HasFlag(format)) continue;
-                switch (format)
-                {
-                    case StringFormat.Plain:
-                        Chars.PlainMap.Add(code, text);
-                        break;
-                    case StringFormat.Html:
-                        Chars.HtmlMap.Add(code, text);
-                        break;
-                }
+                symbols.Add(TagSymbol.FromString(s));
             }
-        }
-
-        public static ISymbol[] RawToSymbols(string input)
-        {
-            var matches = RawRegex.Matches(input).Select(x => x.Value).ToArray();
-
-            var symbols = new List<ISymbol>();
-            foreach (var s in matches)
+            else if (s.StartsWith("[0x"))
             {
-                if (s.StartsWith("{TAG_"))
-                {
-                    symbols.Add(TagSymbol.FromString(s));
-                }
-                else if (s.StartsWith("[0x"))
-                {
-                    symbols.Add(CharSymbol.FromString(s));
-                }
-                else
-                {
-                    symbols.Add(new CharSymbol(s[0]));
-                }
-            }
-
-            return symbols.ToArray();
-        }
-
-        protected static string? WordToText(TagToTextHandler handler)
-        {
-            if (handler.Options.ConvertWordsetToPlaceholder)
-            {
-                var varname = handler.Options.LanguageCode.Split('-')[0].ToLower() switch
-                {
-                    "ja" or "zh" => "〇〇〇〇〇",
-                    _ => "*****",
-                };
-                return varname;
+                symbols.Add(CharSymbol.FromString(s));
             }
             else
             {
-                var varname = handler.Name.StartsWith("TAG_") ? "var" : handler.Name.ToLower();
-                return handler.Options switch
-                {
-                    { Format: StringFormat.Plain } => $"<{varname}>",
-                    { Format: StringFormat.Html } => $"<var>{varname}</var>",
-                    _ => throw new NotSupportedException(),
-                };
+                symbols.Add(new CharSymbol(s[0]));
             }
-            throw new NotSupportedException();
         }
+
+        return symbols.ToArray();
+    }
+
+    protected static string? WordToText(TagToTextHandler handler)
+    {
+        if (handler.Options.ConvertWordsetToPlaceholder)
+        {
+            var varname = handler.Options.LanguageCode.Split('-')[0].ToLower() switch
+            {
+                "ja" or "zh" => "〇〇〇〇〇",
+                _ => "*****",
+            };
+            return varname;
+        }
+        else
+        {
+            var varname = handler.Name.StartsWith("TAG_") ? "var" : handler.Name.ToLower();
+            return handler.Options switch
+            {
+                { Format: StringFormat.Plain } => $"<{varname}>",
+                { Format: StringFormat.Html } => $"<var>{varname}</var>",
+                _ => throw new NotSupportedException(),
+            };
+        }
+        throw new NotSupportedException();
     }
 }

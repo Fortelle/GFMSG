@@ -1,15 +1,13 @@
-﻿namespace GFMSG.GUI
+﻿namespace GFMSG.GUI;
+
+public class CellInfo
 {
-    public class CellInfo
-    {
-        public MsgWrapper.Entry Entry { get; set; }
-        public SymbolSequence Sequence => Entry[Index];
+    public MsgWrapper.Entry Entry { get; set; }
+    public SymbolSequence Sequence => Entry[Index];
 
-        public string Language { get; set; }
-        public int Index { get; set; }
+    public string Language { get; set; }
+    public int Index { get; set; }
 
-        public int Row { get; set; }
-        //public int Column { get; set; }
-    }
-
+    public int Row { get; set; }
+    //public int Column { get; set; }
 }
